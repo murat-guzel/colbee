@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    .input {
+        @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm;
+    }
+
+    .react-select__control {
+        @apply !min-h-[38px] !border-gray-300 hover:!border-gray-400;
+    }
+
+    .react-select__value-container {
+        @apply !py-0;
+    }
+
+    .react-select__menu {
+        @apply !rounded-md !shadow-lg;
+    }
+
+    .react-select__option {
+        @apply !py-2 !px-3 hover:!bg-gray-100;
+    }
+
+    .react-select__option--is-selected {
+        @apply !bg-indigo-500 !text-white;
+    }
+} 
