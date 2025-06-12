@@ -152,7 +152,6 @@ function AutoComplete(props) {
                                             refs.domReference.current?.focus()
                                         },
                                     })}
-                                    key={`auto-complete-item-${index}`}
                                     active={activeIndex === index}
                                 >
                                     {renderOption(item)}

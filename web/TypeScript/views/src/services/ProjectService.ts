@@ -1,26 +1,32 @@
-import ApiService from './ApiService'
+import axios from 'axios';
+import { Project, ProjectList } from '@/app/(protected-pages)/concepts/projects/project-list/types';
 
-export async function apiGetScrumBoards<T>() {
-    return ApiService.fetchDataWithAxios<T>({
-        url: '/projects/scrum-board',
-        method: 'get',
-    })
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+
+class ProjectService {
+    static async getProjects(): Promise<ProjectList> {
+        const response = await axios.get(`${API_BASE_URL}/projects`);
+        return response.data;
+    }
+
+    static async createProject(project: Omit<Project, 'id'>): Promise<Project> {
+        const response = await axios.post(`${API_BASE_URL}/projects`, project);
+        return response.data;
+    }
+
+    static async updateProject(id: string, project: Partial<Project>): Promise<Project> {
+        const response = await axios.put(`${API_BASE_URL}/projects/${id}`, project);
+        return response.data;
+    }
+
+    static async deleteProject(id: string): Promise<void> {
+        await axios.delete(`${API_BASE_URL}/projects/${id}`);
+    }
+
+    static async toggleProjectFavorite(id: string): Promise<Project> {
+        const response = await axios.patch(`${API_BASE_URL}/projects/${id}/favorite`);
+        return response.data;
+    }
 }
 
-export async function apiGetProjectMembers<T>() {
-    return ApiService.fetchDataWithAxios<T>({
-        url: '/projects/scrum-board/members',
-        method: 'get',
-    })
-}
-
-export async function apiGetProject<T, U extends Record<string, unknown>>({
-    id,
-    ...params
-}: U) {
-    return ApiService.fetchDataWithAxios<T>({
-        url: `/projects/${id}`,
-        method: 'get',
-        params,
-    })
-}
+export default ProjectService;

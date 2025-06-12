@@ -55,7 +55,7 @@ const UsersAvatarGroup = (props) => {
                         src={elm[imgKey]}
                         onClick={() => handleAvatarClick(elm)}
                     >
-                        {acronym(elm.name)}
+                        {acronym(elm[nameKey])}
                     </Avatar>
                 </Tooltip>
             ))}

@@ -1,7 +1,11 @@
-import { projectListData } from '@/mock/data/projectsData'
+import ProjectService from '@/services/ProjectService';
+import { ProjectList } from '@/app/(protected-pages)/concepts/projects/project-list/types';
 
-const getProjects = async () => {
-    return projectListData
+export default async function getProjects(): Promise<ProjectList> {
+    try {
+        return await ProjectService.getProjects();
+    } catch (error) {
+        console.error('Error fetching projects:', error);
+        return [];
+    }
 }
-
-export default getProjects

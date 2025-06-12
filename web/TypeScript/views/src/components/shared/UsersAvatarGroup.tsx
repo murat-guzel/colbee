@@ -53,24 +53,28 @@ const UsersAvatarGroup = (props: UsersAvatarGroupProps) => {
             {...avatarGroupProps}
             {...rest}
         >
-            {users.map((elm, index) => (
-                <Tooltip
-                    key={elm[nameKey] + index}
-                    wrapperClass="flex"
-                    title={elm[nameKey]}
-                >
-                    <Avatar
-                        {...defaultAvatarProps}
-                        className={`${
-                            elm[imgKey] ? '' : bgColor(elm[nameKey])
-                        } ${defaultAvatarProps.className}`}
-                        src={elm[imgKey]}
-                        onClick={() => handleAvatarClick(elm)}
+            {users.map((elm) => {
+                // Create a stable unique key by combining name and image URL
+                const uniqueKey = `${elm[nameKey]}-${elm[imgKey] || 'no-img'}`
+                return (
+                    <Tooltip
+                        key={uniqueKey}
+                        wrapperClass="flex"
+                        title={elm[nameKey]}
                     >
-                        {acronym(elm.name)}
-                    </Avatar>
-                </Tooltip>
-            ))}
+                        <Avatar
+                            {...defaultAvatarProps}
+                            className={`${
+                                elm[imgKey] ? '' : bgColor(elm[nameKey])
+                            } ${defaultAvatarProps.className}`}
+                            src={elm[imgKey]}
+                            onClick={() => handleAvatarClick(elm)}
+                        >
+                            {acronym(elm.name)}
+                        </Avatar>
+                    </Tooltip>
+                )
+            })}
         </Avatar.Group>
     )
 }

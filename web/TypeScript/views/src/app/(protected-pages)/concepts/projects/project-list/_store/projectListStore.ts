@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { ProjectList, Project, MemberListOption } from '../types'
+import ProjectService from '@/services/ProjectService'
 
 export type ProjectListState = {
     projectList: ProjectList
@@ -28,20 +29,27 @@ export const useProjectListStore = create<ProjectListState & ProjectListAction>(
             set((state) => ({
                 projectList: [...state.projectList, ...[payload]],
             })),
-        updateProjectFavorite: (payload) =>
-            set((state) => {
-                const { id, value } = payload
-                const newList = state.projectList.map((project) => {
-                    if (project.id === id) {
-                        project.favourite = value
-                    }
-                    return project
-                })
+        updateProjectFavorite: async (payload) => {
+            try {
+                const { id } = payload;
+                const updatedProject = await ProjectService.toggleProjectFavorite(id);
+                
+                set((state) => {
+                    const newList = state.projectList.map((project) => {
+                        if (project.id === id) {
+                            return updatedProject;
+                        }
+                        return project;
+                    });
 
-                return {
-                    projectList: [...newList],
-                }
-            }),
+                    return {
+                        projectList: [...newList],
+                    };
+                });
+            } catch (error) {
+                console.error('Error updating project favorite:', error);
+            }
+        },
         setMembers: (payload) => set(() => ({ memberList: payload })),
     }),
 )
