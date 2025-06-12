@@ -114,11 +114,18 @@ function Select<
         ClearIndicator: DefaultClearIndicator,
         ...components,
         Input: (props: any) => {
+            if (!props.innerProps) {
+                return null;
+            }
             const inputProps = {
                 ...props.innerProps,
-                'aria-activedescendant': props.innerProps['aria-activedescendant'] || undefined
+                'aria-activedescendant': undefined
             }
-            return props.children({ ...props, innerProps: inputProps })
+            return (
+                <div {...inputProps}>
+                    {props.children}
+                </div>
+            )
         }
     }
 

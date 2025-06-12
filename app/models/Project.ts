@@ -1,77 +1,104 @@
-import mongoose from 'mongoose';
+import { Collection, Db, ObjectId } from 'mongodb';
+import connectDB from '../lib/mongodb';
 
-const projectSchema = new mongoose.Schema({
-    id: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    name: {
-        type: String,
-        required: true
-    },
-    ProjectName: {
-        type: String,
-        required: false
-    },
-    category: {
-        type: String,
-        default: 'Project'
-    },
-    desc: {
-        type: String,
-        required: false
-    },
-    Description: {
-        type: String,
-        required: false
-    },
-    attachmentCount: {
-        type: Number,
-        default: 0
-    },
-    totalTask: {
-        type: Number,
-        default: 0
-    },
-    completedTask: {
-        type: Number,
-        default: 0
-    },
-    progression: {
-        type: Number,
-        default: 0
-    },
-    dayleft: {
-        type: Number,
-        default: 30
-    },
-    favourite: {
-        type: Boolean,
-        default: false
-    },
-    member: [{
-        id: String,
-        name: String,
-        img: String
-    }]
-}, {
-    timestamps: true
-});
+export interface ProjectMember {
+  id: string;
+  name: string;
+  img: string;
+}
 
-// Pre-save middleware to ensure consistent field names
-projectSchema.pre('save', function(next) {
-    // If ProjectName is set but name isn't, use ProjectName for name
-    if (this.ProjectName && !this.name) {
-        this.name = this.ProjectName;
-    }
-    // If Description is set but desc isn't, use Description for desc
-    if (this.Description && !this.desc) {
-        this.desc = this.Description;
-    }
-    next();
-});
+export interface Project {
+  _id?: string | ObjectId;
+  id: string;
+  name: string;
+  ProjectName?: string;
+  category?: string;
+  desc?: string;
+  Description?: string;
+  attachmentCount?: number;
+  totalTask?: number;
+  completedTask?: number;
+  progression?: number;
+  dayleft?: number;
+  favourite?: boolean;
+  member?: ProjectMember[];
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
-const Project = mongoose.models.Project || mongoose.model('Project', projectSchema);
+export async function getProjectsCollection(): Promise<Collection<Project>> {
+  const { db } = await connectDB();
+  return db.collection('projects');
+}
 
-export default Project; 
+export async function getAllProjects(): Promise<Project[]> {
+  const collection = await getProjectsCollection();
+  return collection.find().toArray();
+}
+
+export async function getProjectById(id: string): Promise<Project | null> {
+  const collection = await getProjectsCollection();
+  
+  // Try to find by UUID first
+  let project = await collection.findOne({ id });
+  
+  // If not found and id is a valid ObjectId, try to find by _id
+  if (!project && ObjectId.isValid(id)) {
+    project = await collection.findOne({ _id: new ObjectId(id) });
+  }
+  
+  return project;
+}
+
+export async function createProject(projectData: Project): Promise<Project> {
+  const collection = await getProjectsCollection();
+  const result = await collection.insertOne({
+    ...projectData,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  });
+  
+  return { ...projectData, _id: result.insertedId };
+}
+
+export async function updateProject(id: string, updateData: Partial<Project>): Promise<Project | null> {
+  const collection = await getProjectsCollection();
+  const project = await getProjectById(id);
+  
+  if (!project) return null;
+  
+  const query = project._id instanceof ObjectId 
+    ? { _id: project._id } 
+    : { id: project.id };
+  
+  await collection.updateOne(query, { 
+    $set: { 
+      ...updateData, 
+      updatedAt: new Date() 
+    } 
+  });
+  
+  return { ...project, ...updateData };
+}
+
+export async function deleteProject(id: string): Promise<boolean> {
+  const collection = await getProjectsCollection();
+  const project = await getProjectById(id);
+  
+  if (!project) return false;
+  
+  const query = project._id instanceof ObjectId 
+    ? { _id: project._id } 
+    : { id: project.id };
+  
+  const result = await collection.deleteOne(query);
+  return result.deletedCount > 0;
+}
+
+export default {
+  getAllProjects,
+  getProjectById,
+  createProject,
+  updateProject,
+  deleteProject
+}; 

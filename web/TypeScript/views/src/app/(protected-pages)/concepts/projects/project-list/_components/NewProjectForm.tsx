@@ -16,23 +16,17 @@ import { components } from 'react-select'
 import cloneDeep from 'lodash/cloneDeep'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { MemberListOption, Member, Project } from '../types'
 import type { ZodType } from 'zod'
 import type { MultiValueGenericProps, OptionProps } from 'react-select'
 
 type FormSchema = {
-    title: string
-    content: string
+    ProjectName: string
+    Description: string
     assignees: {
-        img: string
         value: string
         label: string
+        img: string
     }[]
-}
-
-type TaskCount = {
-    completedTask?: number
-    totalTask?: number
 }
 
 const { MultiValueLabel } = components
@@ -44,7 +38,7 @@ const CustomSelectOption = ({
     label,
     data,
     isSelected,
-}: OptionProps<MemberListOption>) => {
+}: OptionProps<any>) => {
     return (
         <div
             className={`flex items-center justify-between p-2 ${
@@ -63,7 +57,10 @@ const CustomSelectOption = ({
     )
 }
 
-const CustomControlMulti = ({ children, ...props }: MultiValueGenericProps) => {
+const CustomControlMulti = ({
+    children,
+    ...props
+}: MultiValueGenericProps<any>) => {
     const { img } = props.data
 
     return (
@@ -82,8 +79,8 @@ const CustomControlMulti = ({ children, ...props }: MultiValueGenericProps) => {
 }
 
 const validationSchema: ZodType<FormSchema> = z.object({
-    title: z.string().min(1, { message: 'Title required' }),
-    content: z.string().min(1, { message: 'Content required' }),
+    ProjectName: z.string().min(1, { message: 'Project name required' }),
+    Description: z.string().min(1, { message: 'Description required' }),
     assignees: z.array(
         z.object({ value: z.string(), label: z.string(), img: z.string() }),
     ),
@@ -91,11 +88,14 @@ const validationSchema: ZodType<FormSchema> = z.object({
 
 const NewProjectForm = ({ onClose }: { onClose: () => void }) => {
     const { memberList, updateProjectList } = useProjectListStore()
+    const [isSubmitting, setSubmitting] = useState(false)
 
     const newId = useUniqueId()
 
-    const [taskCount, setTaskCount] = useState<TaskCount>({})
-    const [isSubmiting, setSubmiting] = useState(false)
+    const [taskCount, setTaskCount] = useState<{
+        totalTask?: number
+        completedTask?: number
+    }>({})
 
     const {
         handleSubmit,
@@ -103,56 +103,80 @@ const NewProjectForm = ({ onClose }: { onClose: () => void }) => {
         control,
     } = useForm<FormSchema>({
         defaultValues: {
-            title: '',
-            content: '',
+            ProjectName: '',
+            Description: '',
             assignees: [],
         },
         resolver: zodResolver(validationSchema),
     })
 
-    const handleAddNewTask = (count: TaskCount) => {
+    const handleAddNewTask = (count: {
+        totalTask?: number
+        completedTask?: number
+    }) => {
         setTaskCount(count)
     }
 
     const onSubmit = async (formValue: FormSchema) => {
-        setSubmiting(true)
-        const { title, content, assignees } = formValue
+        try {
+            setSubmitting(true)
+            const { ProjectName, Description, assignees } = formValue
 
-        const { totalTask, completedTask } = taskCount
+            const { totalTask, completedTask } = taskCount
 
-        const member: Member[] = cloneDeep(assignees).map((assignee) => {
-            return {
+            const member = assignees.map((assignee) => ({
                 name: assignee.label,
                 img: assignee.img,
+            }))
+
+            const values = {
+                id: newId,
+                ProjectName,
+                Description,
+                totalTask: totalTask || 0,
+                completedTask: completedTask || 0,
+                progression: totalTask ? ((completedTask || 0) / totalTask) * 100 : 0,
+                member,
             }
-        })
 
-        const values: Project = {
-            id: newId,
-            name: title,
-            desc: content,
-            totalTask: totalTask as number,
-            completedTask: completedTask as number,
-            progression:
-                ((completedTask as number) / (totalTask as number)) * 100 || 0,
-            member,
+            const response = await fetch('http://localhost:3001/api/projects', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify(values),
+            })
+
+            if (!response.ok) {
+                const errorText = await response.text()
+                throw new Error(`Failed to create project: ${response.status} - ${errorText}`)
+            }
+
+            const newProject = await response.json()
+            updateProjectList(newProject)
+            await sleep(500)
+            onClose()
+        } catch (error) {
+            console.error('Error creating project:', error instanceof Error ? error.message : 'Unknown error')
+            if (error instanceof Error) {
+                // Handle specific error cases here if needed
+                console.error('Error details:', error)
+            }
+        } finally {
+            setSubmitting(false)
         }
-
-        updateProjectList(values)
-        await sleep(500)
-        setSubmiting(false)
-        onClose()
     }
 
     return (
         <Form onSubmit={handleSubmit(onSubmit)}>
             <FormItem
-                label="Title"
-                invalid={Boolean(errors.title)}
-                errorMessage={errors.title?.message}
+                label="Project Name"
+                invalid={Boolean(errors.ProjectName)}
+                errorMessage={errors.ProjectName?.message}
             >
                 <Controller
-                    name="title"
+                    name="ProjectName"
                     control={control}
                     render={({ field }) => (
                         <Input type="text" autoComplete="off" {...field} />
@@ -168,7 +192,7 @@ const NewProjectForm = ({ onClose }: { onClose: () => void }) => {
                     name="assignees"
                     control={control}
                     render={({ field }) => (
-                        <Select<MemberListOption, true>
+                        <Select
                             isMulti
                             instanceId="assignees"
                             className="min-w-[120px]"
@@ -177,19 +201,19 @@ const NewProjectForm = ({ onClose }: { onClose: () => void }) => {
                                 MultiValueLabel: CustomControlMulti,
                             }}
                             value={field.value}
-                            options={memberList as MemberListOption[]}
+                            options={memberList}
                             onChange={field.onChange}
                         />
                     )}
                 />
             </FormItem>
             <FormItem
-                label="Content"
-                invalid={Boolean(errors.content)}
-                errorMessage={errors.content?.message}
+                label="Description"
+                invalid={Boolean(errors.Description)}
+                errorMessage={errors.Description?.message}
             >
                 <Controller
-                    name="content"
+                    name="Description"
                     control={control}
                     render={({ field }) => (
                         <Input textArea autoComplete="off" {...field} />
@@ -197,7 +221,7 @@ const NewProjectForm = ({ onClose }: { onClose: () => void }) => {
                 />
             </FormItem>
             <NewTaskField onAddNewTask={handleAddNewTask} />
-            <Button block variant="solid" type="submit" loading={isSubmiting}>
+            <Button block variant="solid" type="submit" loading={isSubmitting}>
                 Submit
             </Button>
         </Form>

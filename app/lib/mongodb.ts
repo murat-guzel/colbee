@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import { MongoClient } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/colbee';
 
@@ -6,10 +6,18 @@ if (!MONGODB_URI) {
     throw new Error('Please define the MONGODB_URI environment variable inside .env');
 }
 
-let cached = global.mongoose;
+interface MongoDBCache {
+    conn: any;
+    client: MongoClient | null;
+    promise: Promise<any> | null;
+}
+
+// @ts-ignore
+let cached: MongoDBCache = global.mongodb;
 
 if (!cached) {
-    cached = global.mongoose = { conn: null, promise: null };
+    // @ts-ignore
+    cached = global.mongodb = { conn: null, client: null, promise: null };
 }
 
 async function connectDB() {
@@ -19,11 +27,16 @@ async function connectDB() {
 
     if (!cached.promise) {
         const opts = {
-            bufferCommands: false,
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
         };
 
-        cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-            return mongoose;
+        cached.promise = MongoClient.connect(MONGODB_URI).then((client) => {
+            const dbName = MONGODB_URI.split('/').pop()?.split('?')[0] || 'colbee';
+            return {
+                client,
+                db: client.db(dbName)
+            };
         });
     }
 

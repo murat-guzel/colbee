@@ -58,8 +58,8 @@ const CustomControlMulti = ({ children, ...props }) => {
 }
 
 const validationSchema = z.object({
-    title: z.string().min(1, { message: 'Title required' }),
-    content: z.string().min(1, { message: 'Content required' }),
+    ProjectName: z.string().min(1, { message: 'Project name required' }),
+    Description: z.string().min(1, { message: 'Description required' }),
     assignees: z.array(
         z.object({ value: z.string(), label: z.string(), img: z.string() }),
     ),
@@ -67,11 +67,11 @@ const validationSchema = z.object({
 
 const NewProjectForm = ({ onClose }) => {
     const { memberList, updateProjectList } = useProjectListStore()
+    const [isSubmitting, setSubmitting] = useState(false)
 
     const newId = useUniqueId()
 
     const [taskCount, setTaskCount] = useState({})
-    const [isSubmiting, setSubmiting] = useState(false)
 
     const {
         handleSubmit,
@@ -79,8 +79,8 @@ const NewProjectForm = ({ onClose }) => {
         control,
     } = useForm({
         defaultValues: {
-            title: '',
-            content: '',
+            ProjectName: '',
+            Description: '',
             assignees: [],
         },
         resolver: zodResolver(validationSchema),
@@ -91,8 +91,8 @@ const NewProjectForm = ({ onClose }) => {
     }
 
     const onSubmit = async (formValue) => {
-        setSubmiting(true)
-        const { title, content, assignees } = formValue
+        setSubmitting(true)
+        const { ProjectName, Description, assignees } = formValue
 
         const { totalTask, completedTask } = taskCount
 
@@ -105,29 +105,53 @@ const NewProjectForm = ({ onClose }) => {
 
         const values = {
             id: newId,
-            name: title,
-            desc: content,
-            totalTask: totalTask,
-            completedTask: completedTask,
-            progression: (completedTask / totalTask) * 100 || 0,
+            ProjectName,
+            Description,
+            totalTask: totalTask || 0,
+            completedTask: completedTask || 0,
+            progression: ((completedTask || 0) / (totalTask || 1)) * 100,
             member,
         }
 
-        updateProjectList(values)
-        await sleep(500)
-        setSubmiting(false)
-        onClose()
+        try {
+            // Send to MongoDB API
+            const response = await fetch('http://localhost:3001/projects', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(values),
+            })
+
+            console.log('API Response status:', response.status)
+            const responseText = await response.text()
+            console.log('API Response body:', responseText)
+
+            if (!response.ok) {
+                throw new Error(`Failed to create project: ${response.status} - ${responseText}`)
+            }
+
+            const newProject = JSON.parse(responseText)
+            updateProjectList(newProject)
+            await sleep(500)
+            setSubmitting(false)
+            onClose()
+        } catch (error) {
+            console.error('Error creating project:', error)
+            console.error('Request payload:', JSON.stringify(values, null, 2))
+            setSubmitting(false)
+        }
     }
 
     return (
         <Form onSubmit={handleSubmit(onSubmit)}>
             <FormItem
-                label="Title"
-                invalid={Boolean(errors.title)}
-                errorMessage={errors.title?.message}
+                label="Project Name"
+                invalid={Boolean(errors.ProjectName)}
+                errorMessage={errors.ProjectName?.message}
             >
                 <Controller
-                    name="title"
+                    name="ProjectName"
                     control={control}
                     render={({ field }) => (
                         <Input type="text" autoComplete="off" {...field} />
@@ -159,12 +183,12 @@ const NewProjectForm = ({ onClose }) => {
                 />
             </FormItem>
             <FormItem
-                label="Content"
-                invalid={Boolean(errors.content)}
-                errorMessage={errors.content?.message}
+                label="Description"
+                invalid={Boolean(errors.Description)}
+                errorMessage={errors.Description?.message}
             >
                 <Controller
-                    name="content"
+                    name="Description"
                     control={control}
                     render={({ field }) => (
                         <Input textArea autoComplete="off" {...field} />
@@ -172,7 +196,7 @@ const NewProjectForm = ({ onClose }) => {
                 />
             </FormItem>
             <NewTaskField onAddNewTask={handleAddNewTask} />
-            <Button block variant="solid" type="submit" loading={isSubmiting}>
+            <Button block variant="solid" type="submit" loading={isSubmitting}>
                 Submit
             </Button>
         </Form>

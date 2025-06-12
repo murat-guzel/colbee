@@ -1,6 +1,7 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import Project from '../models/Project';
+import { ObjectId } from 'mongodb';
+import { Project } from '../models/Project';
 import connectDB from '../lib/mongodb';
 
 const router = express.Router();
@@ -8,12 +9,12 @@ const router = express.Router();
 // Get all projects
 router.get('/', async (req, res) => {
     try {
-        await connectDB();
-        const projects = await Project.find();
+        const { db } = await connectDB();
+        const projects = await db.collection('projects').find().toArray();
         
         // Ensure each project has an ID
         const validatedProjects = projects.map(project => {
-            const doc = project.toObject();
+            const doc = project;
             if (!doc.id && !doc._id) {
                 doc.id = uuidv4();
             }
@@ -36,16 +37,19 @@ router.get('/', async (req, res) => {
 // Create a new project
 router.post('/', async (req, res) => {
     try {
-        await connectDB();
-        const projectData = {
+        const { db } = await connectDB();
+        const projectData: Project = {
             ...req.body,
             id: uuidv4(), // Always generate a new UUID for new projects
             name: req.body.ProjectName || req.body.name || 'Unnamed Project',
-            desc: req.body.desc || req.body.Description || 'No description'
+            desc: req.body.desc || req.body.Description || 'No description',
+            createdAt: new Date(),
+            updatedAt: new Date()
         };
         
-        const project = new Project(projectData);
-        const newProject = await project.save();
+        const result = await db.collection('projects').insertOne(projectData);
+        const newProject = { ...projectData, _id: result.insertedId };
+        
         console.log('API - Created new project:', newProject);
         res.status(201).json(newProject);
     } catch (error) {
@@ -57,26 +61,33 @@ router.post('/', async (req, res) => {
 // Update project
 router.put('/:id', async (req, res) => {
     try {
-        await connectDB();
+        const { db } = await connectDB();
         const projectId = req.params.id;
         const updateData = {
             ...req.body,
             name: req.body.ProjectName || req.body.name || 'Unnamed Project',
-            desc: req.body.desc || req.body.Description || 'No description'
+            desc: req.body.desc || req.body.Description || 'No description',
+            updatedAt: new Date()
         };
         
-        const project = await Project.findOneAndUpdate(
-            { $or: [{ id: projectId }, { _id: projectId }] },
-            updateData,
-            { new: true }
-        );
+        // Try to find by UUID first, then by MongoDB ObjectId
+        let query: { id: string } | { _id: ObjectId } = { id: projectId };
+        let project = await db.collection('projects').findOne(query);
+        
+        if (!project && ObjectId.isValid(projectId)) {
+            query = { _id: new ObjectId(projectId) };
+            project = await db.collection('projects').findOne(query);
+        }
         
         if (!project) {
             return res.status(404).json({ message: 'Project not found' });
         }
         
-        console.log('API - Updated project:', project);
-        res.json(project);
+        await db.collection('projects').updateOne(query, { $set: updateData });
+        const updatedProject = { ...project, ...updateData };
+        
+        console.log('API - Updated project:', updatedProject);
+        res.json(updatedProject);
     } catch (error) {
         console.error('API - Error updating project:', error);
         res.status(400).json({ message: error.message });
@@ -86,15 +97,23 @@ router.put('/:id', async (req, res) => {
 // Delete project
 router.delete('/:id', async (req, res) => {
     try {
-        await connectDB();
+        const { db } = await connectDB();
         const projectId = req.params.id;
-        const project = await Project.findOneAndDelete(
-            { $or: [{ id: projectId }, { _id: projectId }] }
-        );
+        
+        // Try to find by UUID first, then by MongoDB ObjectId
+        let query: { id: string } | { _id: ObjectId } = { id: projectId };
+        let project = await db.collection('projects').findOne(query);
+        
+        if (!project && ObjectId.isValid(projectId)) {
+            query = { _id: new ObjectId(projectId) };
+            project = await db.collection('projects').findOne(query);
+        }
         
         if (!project) {
             return res.status(404).json({ message: 'Project not found' });
         }
+        
+        await db.collection('projects').deleteOne(query);
         
         console.log('API - Deleted project:', project);
         res.json({ message: 'Project deleted' });
@@ -107,18 +126,26 @@ router.delete('/:id', async (req, res) => {
 // Toggle project favorite status
 router.patch('/:id/favorite', async (req, res) => {
     try {
-        await connectDB();
+        const { db } = await connectDB();
         const projectId = req.params.id;
-        const project = await Project.findOne(
-            { $or: [{ id: projectId }, { _id: projectId }] }
-        );
+        
+        // Try to find by UUID first, then by MongoDB ObjectId
+        let query: { id: string } | { _id: ObjectId } = { id: projectId };
+        let project = await db.collection('projects').findOne(query);
+        
+        if (!project && ObjectId.isValid(projectId)) {
+            query = { _id: new ObjectId(projectId) };
+            project = await db.collection('projects').findOne(query);
+        }
         
         if (!project) {
             return res.status(404).json({ message: 'Project not found' });
         }
         
-        project.favourite = !project.favourite;
-        await project.save();
+        const favourite = !project.favourite;
+        await db.collection('projects').updateOne(query, { $set: { favourite, updatedAt: new Date() } });
+        
+        project.favourite = favourite;
         console.log('API - Toggled project favorite:', project);
         res.json(project);
     } catch (error) {

@@ -19,7 +19,7 @@ const ProjectListHeader = () => {
                 </div>
             </div>
             <Dialog isOpen={dialogOpen} onClose={() => setDialogOpen(false)}>
-                <h4>Add new project</h4>
+                <h4>Project Name</h4>
                 <div className="mt-4">
                     <NewProjectForm onClose={() => setDialogOpen(false)} />
                 </div>

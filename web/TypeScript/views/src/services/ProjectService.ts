@@ -9,6 +9,11 @@ class ProjectService {
         return response.data;
     }
 
+    static async getProject(id: string): Promise<Project> {
+        const response = await axios.get(`${API_BASE_URL}/projects/${id}`);
+        return response.data;
+    }
+
     static async createProject(project: Omit<Project, 'id'>): Promise<Project> {
         const response = await axios.post(`${API_BASE_URL}/projects`, project);
         return response.data;
@@ -30,3 +35,6 @@ class ProjectService {
 }
 
 export default ProjectService;
+
+// Named export for the getProject method to match the import in ProjectDetails.tsx
+export const apiGetProject = ({ id }: { id: string }) => ProjectService.getProject(id);
