@@ -1,0 +1,28 @@
+.mac-window-header {
+  display: flex;
+  gap: 6px;
+  padding: 12px 16px;
+  background: #e5e7eb;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  width: fit-content;
+}
+
+.mac-btn {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.mac-close {
+  background: #ff5f56;
+}
+
+.mac-minimize {
+  background: #ffbd2e;
+}
+
+.mac-maximize {
+  background: #27c93f;
+} 
