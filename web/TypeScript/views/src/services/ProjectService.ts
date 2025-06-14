@@ -32,9 +32,21 @@ class ProjectService {
         const response = await axios.patch(`${API_BASE_URL}/projects/${id}/favorite`);
         return response.data;
     }
+
+    static async getProjectMembers<T>(): Promise<T> {
+        const response = await axios.get(`${API_BASE_URL}/projects/members`);
+        return response.data;
+    }
+
+    static async getScrumBoards<T>(): Promise<T> {
+        const response = await axios.get(`${API_BASE_URL}/projects/scrum-boards`);
+        return response.data;
+    }
 }
 
 export default ProjectService;
 
 // Named export for the getProject method to match the import in ProjectDetails.tsx
 export const apiGetProject = ({ id }: { id: string }) => ProjectService.getProject(id);
+export const apiGetProjectMembers = <T>() => ProjectService.getProjectMembers<T>();
+export const apiGetScrumBoards = <T>() => ProjectService.getScrumBoards<T>();

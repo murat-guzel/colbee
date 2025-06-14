@@ -5,36 +5,49 @@ import Spinner from '@/components/ui/Spinner'
 import ProjectDetailsHeader from './ProjectDetailsHeader'
 import ProjectDetailsNavigation from './ProjectDetailsNavigation'
 import useResponsive from '@/utils/hooks/useResponsive'
-import { apiGetProject } from '@/services/ProjectService'
-import useSWR from 'swr'
-import type { GetProjectDetailsResponse } from '../types'
 
 const defaultNavValue = 'overview'
 const settingsNavValue = 'settings'
 
 const ProjectDetailsOverview = lazy(() => import('./ProjectDetailsOverview'))
 const ProjectDetailsTask = lazy(() => import('./ProjectDetailsTask'))
-const ProjectDetailsAttachments = lazy(
-    () => import('./ProjectDetailsAttachments'),
-)
+const ProjectDetailsAttachments = lazy(() => import('./ProjectDetailsAttachments'))
 const ProjectDetailsActivity = lazy(() => import('./ProjectDetailsActivity'))
 const ProjectDetailsSetting = lazy(() => import('./ProjectDetailsSetting'))
 
-const ProjectDetails = ({ id }: { id: string }) => {
-    const { data, mutate } = useSWR<GetProjectDetailsResponse, { id: string }>(
-        [`/api/projects/${id}`],
-        () => apiGetProject({ id }),
-        {
-            revalidateOnFocus: false,
-            revalidateIfStale: false,
-            revalidateOnReconnect: false,
+// Örnek statik veri
+const mockProjectData = {
+    id: '1',
+    name: 'Proje Adı',
+    content: '',
+    client: {
+        clientName: 'Müşteri Adı',
+        skateHolder: {
+            name: 'Ahmet Yılmaz',
+            img: '/img/avatars/thumb-1.jpg'
         },
-    )
+        projectManager: {
+            name: 'Mehmet Demir',
+            img: '/img/avatars/thumb-2.jpg'
+        }
+    },
+    schedule: {
+        startDate: Date.now(),
+        dueDate: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 gün sonrası
+        status: 'active',
+        completion: 75
+    },
+    members: [
+        { id: '1', name: 'Ahmet Yılmaz', role: 'Proje Yöneticisi' },
+        { id: '2', name: 'Mehmet Demir', role: 'Geliştirici' }
+    ]
+}
 
+const ProjectDetails = ({ id }: { id: string }) => {
     const { larger } = useResponsive()
-
     const [selectedNav, setSelectedNav] = useState(defaultNavValue)
     const [isContentEdit, setIsContentEdit] = useState(false)
+    const [projectData, setProjectData] = useState(mockProjectData)
 
     const handleEdit = (isEdit: boolean) => {
         setSelectedNav(settingsNavValue)
@@ -42,7 +55,7 @@ const ProjectDetails = ({ id }: { id: string }) => {
     }
 
     const handleContentChange = (content: string) => {
-        mutate({ ...(data as GetProjectDetailsResponse), content }, false)
+        setProjectData(prev => ({ ...prev, content }))
         setIsContentEdit(false)
     }
 
@@ -55,14 +68,15 @@ const ProjectDetails = ({ id }: { id: string }) => {
         content: string
         dueDate: number
     }) => {
-        const newData = { ...data }
-        newData.name = name
-        newData.content = content
-        if (newData.schedule) {
-            newData.schedule.dueDate = dueDate
-        }
-
-        mutate({ ...(newData as GetProjectDetailsResponse) }, false)
+        setProjectData(prev => ({
+            ...prev,
+            name,
+            content,
+            schedule: {
+                ...prev.schedule,
+                dueDate
+            }
+        }))
         setIsContentEdit(false)
         setSelectedNav(defaultNavValue)
     }
@@ -78,62 +92,58 @@ const ProjectDetails = ({ id }: { id: string }) => {
 
     return (
         <div>
-            {data && (
-                <>
-                    <ProjectDetailsHeader
-                        title={data.name}
-                        isContentEdit={isContentEdit}
+            <ProjectDetailsHeader
+                title={projectData.name}
+                isContentEdit={isContentEdit}
+                selected={selectedNav}
+                onEdit={handleEdit}
+                onChange={handleNavigationChange}
+            />
+            <div className="mt-6 flex gap-12">
+                {larger.xl && (
+                    <ProjectDetailsNavigation
                         selected={selectedNav}
-                        onEdit={handleEdit}
                         onChange={handleNavigationChange}
                     />
-                    <div className="mt-6 flex gap-12">
-                        {larger.xl && (
-                            <ProjectDetailsNavigation
-                                selected={selectedNav}
-                                onChange={handleNavigationChange}
+                )}
+                <div className="w-full">
+                    <Suspense
+                        fallback={
+                            <div className="my-4 mx-auto text-center flex justify-center">
+                                <Spinner size={40} />
+                            </div>
+                        }
+                    >
+                        {selectedNav === defaultNavValue && (
+                            <ProjectDetailsOverview
+                                content={projectData.content}
+                                client={projectData.client}
+                                schedule={projectData.schedule}
+                                isContentEdit={isContentEdit}
+                                setIsContentEdit={setIsContentEdit}
+                                onContentChange={handleContentChange}
                             />
                         )}
-                        <div className="w-full">
-                            <Suspense
-                                fallback={
-                                    <div className="my-4 mx-auto text-center flex justify-center">
-                                        <Spinner size={40} />
-                                    </div>
-                                }
-                            >
-                                {selectedNav === defaultNavValue && (
-                                    <ProjectDetailsOverview
-                                        content={data.content}
-                                        client={data.client}
-                                        schedule={data.schedule}
-                                        isContentEdit={isContentEdit}
-                                        setIsContentEdit={setIsContentEdit}
-                                        onContentChange={handleContentChange}
-                                    />
-                                )}
-                                {selectedNav === 'tasks' && (
-                                    <ProjectDetailsTask />
-                                )}
-                                {selectedNav === 'attachments' && (
-                                    <ProjectDetailsAttachments />
-                                )}
-                                {selectedNav === 'activity' && (
-                                    <ProjectDetailsActivity />
-                                )}
-                                {selectedNav === 'settings' && (
-                                    <ProjectDetailsSetting
-                                        name={data.name}
-                                        content={data.content}
-                                        dueDate={data.schedule.dueDate}
-                                        onUpdate={handleUpdate}
-                                    />
-                                )}
-                            </Suspense>
-                        </div>
-                    </div>
-                </>
-            )}
+                        {selectedNav === 'tasks' && (
+                            <ProjectDetailsTask />
+                        )}
+                        {selectedNav === 'attachments' && (
+                            <ProjectDetailsAttachments />
+                        )}
+                        {selectedNav === 'activity' && (
+                            <ProjectDetailsActivity />
+                        )}
+                        {selectedNav === 'settings' && (
+                            <ProjectDetailsSetting
+                                name={projectData.name}
+                                content={projectData.content}
+                                dueDate={projectData.schedule.dueDate}
+                                onUpdate={handleUpdate}
+                            />
+                        )}
+                    </Suspense>
+                </div>
+            </div>
         </div>
     )
 }

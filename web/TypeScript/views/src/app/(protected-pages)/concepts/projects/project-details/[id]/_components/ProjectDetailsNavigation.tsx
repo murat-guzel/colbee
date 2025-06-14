@@ -2,7 +2,7 @@
 
 import classNames from '@/utils/classNames'
 import {
-    TbFileInfo,
+    TbBraces,
     TbChecklist,
     TbSettings,
     TbCalendarStats,
@@ -15,7 +15,7 @@ type ProjectDetailsNavigationProps = {
 }
 
 const navigation = [
-    { label: 'Overview', value: 'overview', icon: <TbFileInfo /> },
+    { label: 'API Contract', value: 'overview', icon: <TbBraces /> },
     { label: 'Tasks', value: 'tasks', icon: <TbChecklist /> },
     { label: 'Attachments', value: 'attachments', icon: <TbPaperclip /> },
     { label: 'Activities', value: 'activity', icon: <TbCalendarStats /> },

@@ -4,6 +4,12 @@ import Progress from '@/components/ui/Progress'
 import Tag from '@/components/ui/Tag'
 import ReactHtmlParser from 'html-react-parser'
 import dayjs from 'dayjs'
+import dynamic from 'next/dynamic'
+
+const MonacoEditor = dynamic(
+    () => import('@monaco-editor/react').then((mod) => mod.Editor),
+    { ssr: false }
+)
 
 type ProjectDetailsOverviewProps = {
     content: string
@@ -32,9 +38,44 @@ type ProjectDetailsOverviewProps = {
 const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
     const { content = '', client = {}, schedule = {} } = props
 
+    const handleEditorChange = (value: string | undefined) => {
+        if (value) {
+            try {
+                // Validate JSON
+                JSON.parse(value)
+                props.onContentChange(value)
+            } catch (e) {
+                // Invalid JSON, don't update
+                console.error('Invalid JSON:', e)
+            }
+        }
+    }
+
     return (
         <div className="flex flex-col lg:flex-row flex-auto gap-12">
-            <div className="prose max-w-full">{ReactHtmlParser(content)}</div>
+            <div className="flex-1">
+                <div className="prose max-w-full mb-6">{ReactHtmlParser(content)}</div>
+                <Card className="mt-6">
+                    <div className="h-[400px] border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <MonacoEditor
+                            height="100%"
+                            defaultLanguage="json"
+                            defaultValue={JSON.stringify({ client, schedule }, null, 2)}
+                            onChange={handleEditorChange}
+                            options={{
+                                minimap: { enabled: false },
+                                fontSize: 14,
+                                wordWrap: 'on',
+                                lineNumbers: 'on',
+                                folding: true,
+                                formatOnPaste: true,
+                                formatOnType: true,
+                            }}
+                            theme="vs-dark"
+                        />
+                    </div>
+                </Card>
+            </div>
             <div className="lg:min-w-[320px] lg:w-[350px]">
                 <Card
                     bordered={false}
