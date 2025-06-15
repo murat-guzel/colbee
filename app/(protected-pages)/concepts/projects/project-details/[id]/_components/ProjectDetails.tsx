@@ -5,7 +5,6 @@ import Spinner from '@/components/ui/Spinner'
 import ProjectDetailsHeader from './ProjectDetailsHeader'
 import ProjectDetailsNavigation from './ProjectDetailsNavigation'
 import useResponsive from '@/utils/hooks/useResponsive'
-import ProjectService from '@/services/ProjectService'
 
 const defaultNavValue = 'overview'
 const settingsNavValue = 'settings'
@@ -53,11 +52,16 @@ const ProjectDetails = ({ id }: { id: string }) => {
     useEffect(() => {
         const fetchProjectDetails = async () => {
             try {
-                const data = await ProjectService.getProject(id)
-                setProjectData(prev => ({
-                    ...prev,
-                    name: data.name
-                }))
+                const apiUrl = `http://localhost:3001/api/projects/${id}`
+                const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                
+                const data = await response.json()
+                console.log('API Response:', data)
             } catch (error) {
                 console.error('Error fetching project details:', error)
             }
@@ -166,4 +170,4 @@ const ProjectDetails = ({ id }: { id: string }) => {
     )
 }
 
-export default ProjectDetails
+export default ProjectDetails 

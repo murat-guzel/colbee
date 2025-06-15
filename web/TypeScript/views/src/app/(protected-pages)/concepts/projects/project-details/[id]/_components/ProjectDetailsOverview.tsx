@@ -12,6 +12,7 @@ import { Input } from '@/components/ui'
 import { useForm, Controller } from 'react-hook-form'
 import { Dialog } from '@/components/ui'
 import MacWindowHeader from '@/components/MacWindowHeader'
+import { useParams } from 'next/navigation'
 
 const MonacoEditor = dynamic(
     () => import('@monaco-editor/react').then((mod) => mod.Editor),
@@ -30,6 +31,7 @@ type ProjectDetailsOverviewProps = {
     isContentEdit: boolean
     onContentChange: (content: string) => void
     setIsContentEdit: (isEdit: boolean) => void
+    projectName: string
     client: Partial<{
         clientName: string
         skateHolder: {
@@ -54,12 +56,32 @@ type CommentFormData = {
 }
 
 const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
-    const { content = '', client = {}, schedule = {} } = props
+    const { content = '', client = {}, schedule = {}, projectName } = props
     const editorRef = useRef<any>(null)
     const monacoRef = useRef<any>(null)
     const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false)
     const [selectedLine, setSelectedLine] = useState<number | null>(null)
     const [isEditorMounted, setIsEditorMounted] = useState(false)
+    const params = useParams()
+
+    useEffect(() => {
+        const fetchProjectDetails = async () => {
+            try {
+                const projectId = params.id as string
+                const response = await fetch(`/api/projects/${projectId}`)
+                if (!response.ok) {
+                    throw new Error('Failed to fetch project details')
+                }
+                const projectDetails = await response.json()
+                // alert(JSON.stringify(projectDetails, null, 2))
+            } catch (error) {
+                console.error('Error fetching project details:', error)
+                // alert('Error fetching project details')
+            }
+        }
+
+        fetchProjectDetails()
+    }, [params.id])
 
     const { handleSubmit, control, reset } = useForm<CommentFormData>({
         defaultValues: {
@@ -209,9 +231,6 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
     return (
         <div className="flex flex-col lg:flex-row flex-auto gap-12">
             <div className="flex-1">
-                {!props.isContentEdit && (
-                    <div className="prose max-w-full mb-6">{ReactHtmlParser(content)}</div>
-                )}
                 <Card className="mt-6">
                     <div style={{ borderRadius: 10, overflow: 'hidden', background: '#e5e7eb' }}>
                         <MacWindowHeader />

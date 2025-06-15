@@ -83,6 +83,45 @@ app.get('/api/projects', async (req, res) => {
     }
 });
 
+// Get single project by ID
+app.get('/api/projects/:id', async (req, res) => {
+    try {
+        const { db } = await connectDB();
+        const projectId = req.params.id;
+        
+        // Try to find by UUID first, then by MongoDB ObjectId
+        let query = { id: projectId };
+        let project = await db.collection('projects').findOne(query);
+        
+        if (!project && ObjectId.isValid(projectId)) {
+            query = { _id: new ObjectId(projectId) };
+            project = await db.collection('projects').findOne(query);
+        }
+        
+        if (!project) {
+            return res.status(404).json({ message: 'Project not found' });
+        }
+        
+        // Ensure project has an ID
+        if (!project.id && !project._id) {
+            project.id = uuidv4();
+        }
+        
+        const validatedProject = {
+            ...project,
+            id: project.id || project._id.toString(),
+            name: project.ProjectName || project.name || 'Unnamed Project',
+            desc: project.desc || project.Description || 'No description'
+        };
+        
+        console.log('API - Sending project:', validatedProject);
+        res.json(validatedProject);
+    } catch (error) {
+        console.error('API - Error fetching project:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // Create a new project
 app.post('/api/projects', async (req, res) => {
     try {
