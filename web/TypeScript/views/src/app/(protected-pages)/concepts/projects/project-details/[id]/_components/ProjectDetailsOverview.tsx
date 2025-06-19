@@ -55,6 +55,16 @@ type CommentFormData = {
     comment: string
 }
 
+type Comment = {
+    _id: string
+    content: string
+    lineNumber: number
+    author: string
+    projectName: string
+    projectId: string
+    createdAt: string
+}
+
 const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
     const { content = '', client = {}, schedule = {}, projectName } = props
     const editorRef = useRef<any>(null)
@@ -64,7 +74,36 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
     const [isEditorMounted, setIsEditorMounted] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false)
+    const [comments, setComments] = useState<Comment[]>([])
+    const [isLoadingComments, setIsLoadingComments] = useState(false)
+    const [isCommentViewDialogOpen, setIsCommentViewDialogOpen] = useState(false)
+    const [selectedComment, setSelectedComment] = useState<Comment | null>(null)
     const params = useParams()
+
+    // Load comments for the project
+    const loadComments = async () => {
+        if (!params.id) return
+        
+        setIsLoadingComments(true)
+        try {
+            console.log('Loading comments for project:', params.id)
+            const response = await fetch(`/api/projects/${params.id}/comments`)
+            
+            if (response.ok) {
+                const commentsData = await response.json()
+                console.log('Successfully loaded comments:', commentsData)
+                setComments(Array.isArray(commentsData) ? commentsData : [])
+            } else {
+                console.error('Failed to load comments:', response.status, response.statusText)
+                setComments([])
+            }
+        } catch (error) {
+            console.error('Error loading comments:', error)
+            setComments([])
+        } finally {
+            setIsLoadingComments(false)
+        }
+    }
 
     useEffect(() => {
         const fetchProjectDetails = async () => {
@@ -83,6 +122,7 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
         }
 
         fetchProjectDetails()
+        loadComments()
     }, [params.id])
 
     const { handleSubmit, control, reset } = useForm<CommentFormData>({
@@ -146,9 +186,44 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
             const savedComment = await response.json()
             console.log('Comment saved successfully:', savedComment)
 
+            // Reload comments to show the new comment
+            await loadComments()
+
             setIsCommentDialogOpen(false)
             setIsSuccessDialogOpen(true)
             reset()
+            
+            // Force editor to refresh decorations
+            if (editorRef.current && monacoRef.current) {
+                setTimeout(() => {
+                    if (editorRef.current.commentDecorations) {
+                        editorRef.current.deltaDecorations(editorRef.current.commentDecorations, []);
+                        editorRef.current.commentDecorations = [];
+                    }
+                    
+                    comments.forEach(comment => {
+                        const lineNumber = comment.lineNumber;
+                        const model = editorRef.current.getModel();
+                        
+                        if (model && lineNumber <= model.getLineCount()) {
+                            const decorations = editorRef.current.deltaDecorations([], [{
+                                range: new monacoRef.current.Range(lineNumber, 1, lineNumber, 1),
+                                options: {
+                                    glyphMarginClassName: 'comment-indicator',
+                                    glyphMarginHoverMessage: {
+                                        value: `Comment by ${comment.author}: ${comment.content}`
+                                    }
+                                }
+                            }]);
+                            
+                            if (!editorRef.current.commentDecorations) {
+                                editorRef.current.commentDecorations = [];
+                            }
+                            editorRef.current.commentDecorations.push(...decorations);
+                        }
+                    });
+                }, 100);
+            }
         } catch (error) {
             console.error('Error saving comment:', error)
             alert(`Failed to save comment: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -160,6 +235,7 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
     const handleEditorDidMount = (editor: any, monaco: any) => {
         editorRef.current = editor
         monacoRef.current = monaco
+        setIsEditorMounted(true)
 
         let currentLine: number | null = null;
         let pencilIcon: HTMLDivElement | null = null;
@@ -172,6 +248,90 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
             <path d="M8 9h8"/>
             <path d="M8 13h6"/>
         </svg>`;
+
+        // Function to add red dots for lines with comments
+        const addCommentIndicators = () => {
+            comments.forEach(comment => {
+                const lineNumber = comment.lineNumber;
+                const model = editor.getModel();
+                
+                if (model && lineNumber <= model.getLineCount()) {
+                    // Add red dot in the glyph margin
+                    const decorations = editor.deltaDecorations([], [{
+                        range: new monaco.Range(lineNumber, 1, lineNumber, 1),
+                        options: {
+                            glyphMarginClassName: 'comment-indicator',
+                            glyphMarginHoverMessage: {
+                                value: `Comment by ${comment.author}: ${comment.content}`
+                            }
+                        }
+                    }]);
+                    
+                    // Store decoration IDs for cleanup
+                    if (!editor.commentDecorations) {
+                        editor.commentDecorations = [];
+                    }
+                    editor.commentDecorations.push(...decorations);
+                }
+            });
+        };
+
+        // Function to handle comment indicator clicks
+        const handleCommentClick = (lineNumber: number) => {
+            const comment = comments.find(c => c.lineNumber === lineNumber);
+            if (comment) {
+                setSelectedComment(comment);
+                setIsCommentViewDialogOpen(true);
+            }
+        };
+
+        // Add click event listener to glyph margin
+        const glyphMarginClickDisposable = editor.onMouseDown((e: any) => {
+            if (e.target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) {
+                const lineNumber = e.target.position.lineNumber;
+                const comment = comments.find(c => c.lineNumber === lineNumber);
+                if (comment) {
+                    handleCommentClick(lineNumber);
+                }
+            }
+        });
+
+        // Add CSS for red dot indicator
+        const style = document.createElement('style');
+        style.textContent = `
+            .comment-indicator::before {
+                content: '';
+                position: absolute;
+                left: 6px;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 10px;
+                height: 10px;
+                background-color: #ef4444;
+                border-radius: 50%;
+                z-index: 1000;
+                box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
+                border: 1px solid #dc2626;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+            
+            .comment-indicator:hover::before {
+                background-color: #dc2626;
+                box-shadow: 0 0 6px rgba(239, 68, 68, 0.7);
+                transform: translateY(-50%) scale(1.1);
+            }
+
+            .comment-indicator {
+                cursor: pointer;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Add comment indicators when editor is ready
+        setTimeout(() => {
+            addCommentIndicators();
+        }, 100);
 
         function showPencilIconAtLineEnd(lineNumber: number) {
             const model = editor.getModel();
@@ -264,9 +424,49 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
         editor.onDidDispose(() => {
             mouseMoveDisposable.dispose();
             mouseLeaveDisposable.dispose();
+            glyphMarginClickDisposable.dispose();
             hidePencilIcon();
+            // Clean up comment decorations
+            if (editor.commentDecorations) {
+                editor.deltaDecorations(editor.commentDecorations, []);
+                editor.commentDecorations = [];
+            }
         });
     }
+
+    // Update comment indicators when comments change
+    useEffect(() => {
+        if (isEditorMounted && editorRef.current && monacoRef.current) {
+            // Clear existing decorations
+            if (editorRef.current.commentDecorations) {
+                editorRef.current.deltaDecorations(editorRef.current.commentDecorations, []);
+                editorRef.current.commentDecorations = [];
+            }
+            
+            // Add new decorations
+            comments.forEach(comment => {
+                const lineNumber = comment.lineNumber;
+                const model = editorRef.current.getModel();
+                
+                if (model && lineNumber <= model.getLineCount()) {
+                    const decorations = editorRef.current.deltaDecorations([], [{
+                        range: new monacoRef.current.Range(lineNumber, 1, lineNumber, 1),
+                        options: {
+                            glyphMarginClassName: 'comment-indicator',
+                            glyphMarginHoverMessage: {
+                                value: `Comment by ${comment.author}: ${comment.content}`
+                            }
+                        }
+                    }]);
+                    
+                    if (!editorRef.current.commentDecorations) {
+                        editorRef.current.commentDecorations = [];
+                    }
+                    editorRef.current.commentDecorations.push(...decorations);
+                }
+            });
+        }
+    }, [comments, isEditorMounted]);
 
     return (
         <div className="flex flex-col lg:flex-row flex-auto gap-12">
@@ -297,7 +497,14 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
                                     parameterHints: {
                                         enabled: true
                                     },
-                                    glyphMargin: true
+                                    glyphMargin: true,
+                                    lineDecorationsWidth: 20,
+                                    lineNumbersMinChars: 3,
+                                    renderLineHighlight: 'all',
+                                    overviewRulerBorder: false,
+                                    hideCursorInOverviewRuler: true,
+                                    scrollBeyondLastLine: false,
+                                    automaticLayout: true
                                 }}
                                 theme="vs-dark"
                             />
@@ -477,6 +684,61 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
                             variant="solid"
                             className="w-1/2 bg-blue-600 text-white"
                             onClick={() => setIsSuccessDialogOpen(false)}
+                        >
+                            Kapat
+                        </Button>
+                    </div>
+                </div>
+            </Dialog>
+
+            <Dialog
+                isOpen={isCommentViewDialogOpen}
+                onClose={() => {
+                    setIsCommentViewDialogOpen(false)
+                    setSelectedComment(null)
+                }}
+                width={500}
+                className="rounded-2xl shadow-xl"
+            >
+                <div className="p-8 flex flex-col items-center">
+                    {/* Title */}
+                    <h2 className="text-2xl font-bold text-center mb-2 w-full">Yorum Detayları</h2>
+                    {/* Comment content */}
+                    {selectedComment && (
+                        <div className="w-full">
+                            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-6">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                            <circle cx="12" cy="7" r="4"/>
+                                        </svg>
+                                    </div>
+                                    <span className="font-semibold text-gray-900 dark:text-gray-100">{selectedComment.author}</span>
+                                    <span className="text-sm text-gray-500">•</span>
+                                    <span className="text-sm text-gray-500">
+                                        {dayjs(selectedComment.createdAt).format('DD MMM YYYY, HH:mm')}
+                                    </span>
+                                </div>
+                                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                                    {selectedComment.content}
+                                </p>
+                                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                                    <span className="text-sm text-gray-500">
+                                        Satır {selectedComment.lineNumber}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <div className="flex gap-4 w-full">
+                        <Button
+                            variant="default"
+                            className="w-full border-blue-600 text-blue-600"
+                            onClick={() => {
+                                setIsCommentViewDialogOpen(false)
+                                setSelectedComment(null)
+                            }}
                         >
                             Kapat
                         </Button>
