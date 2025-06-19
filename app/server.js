@@ -242,6 +242,147 @@ app.patch('/api/projects/:id/favorite', async (req, res) => {
     }
 });
 
+// Comments API Routes
+
+// Get all comments for a project
+app.get('/api/projects/:projectId/comments', async (req, res) => {
+    try {
+        const { db } = await connectDB();
+        const projectId = req.params.projectId;
+        
+        // Try to find project by UUID first, then by MongoDB ObjectId
+        let projectQuery = { id: projectId };
+        let project = await db.collection('projects').findOne(projectQuery);
+        
+        if (!project && ObjectId.isValid(projectId)) {
+            projectQuery = { _id: new ObjectId(projectId) };
+            project = await db.collection('projects').findOne(projectQuery);
+        }
+        
+        if (!project) {
+            return res.status(404).json({ message: 'Project not found' });
+        }
+        
+        const comments = await db.collection('comments')
+            .find({ projectId: projectId })
+            .sort({ createdAt: -1 })
+            .toArray();
+        
+        console.log('API - Sending comments for project:', projectId, comments);
+        res.json(comments);
+    } catch (error) {
+        console.error('API - Error fetching comments:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Create a new comment
+app.post('/api/projects/:projectId/comments', async (req, res) => {
+    try {
+        const { db } = await connectDB();
+        const projectId = req.params.projectId;
+        const { content, lineNumber, author, projectName } = req.body;
+        
+        // Try to find project by UUID first, then by MongoDB ObjectId
+        let projectQuery = { id: projectId };
+        let project = await db.collection('projects').findOne(projectQuery);
+        
+        if (!project && ObjectId.isValid(projectId)) {
+            projectQuery = { _id: new ObjectId(projectId) };
+            project = await db.collection('projects').findOne(projectQuery);
+        }
+        
+        if (!project) {
+            return res.status(404).json({ message: 'Project not found' });
+        }
+        
+        const commentData = {
+            id: uuidv4(),
+            projectId: projectId,
+            projectName: projectName || project.ProjectName || project.name || 'Unknown Project',
+            content: content,
+            lineNumber: lineNumber,
+            author: author || 'Anonymous',
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
+        
+        const result = await db.collection('comments').insertOne(commentData);
+        const newComment = { ...commentData, _id: result.insertedId };
+        
+        console.log('API - Created new comment:', newComment);
+        res.status(201).json(newComment);
+    } catch (error) {
+        console.error('API - Error creating comment:', error);
+        res.status(400).json({ message: error.message });
+    }
+});
+
+// Update a comment
+app.put('/api/comments/:commentId', async (req, res) => {
+    try {
+        const { db } = await connectDB();
+        const commentId = req.params.commentId;
+        const { content } = req.body;
+        
+        // Try to find by UUID first, then by MongoDB ObjectId
+        let query = { id: commentId };
+        let comment = await db.collection('comments').findOne(query);
+        
+        if (!comment && ObjectId.isValid(commentId)) {
+            query = { _id: new ObjectId(commentId) };
+            comment = await db.collection('comments').findOne(query);
+        }
+        
+        if (!comment) {
+            return res.status(404).json({ message: 'Comment not found' });
+        }
+        
+        const updateData = {
+            content: content,
+            updatedAt: new Date()
+        };
+        
+        await db.collection('comments').updateOne(query, { $set: updateData });
+        const updatedComment = { ...comment, ...updateData };
+        
+        console.log('API - Updated comment:', updatedComment);
+        res.json(updatedComment);
+    } catch (error) {
+        console.error('API - Error updating comment:', error);
+        res.status(400).json({ message: error.message });
+    }
+});
+
+// Delete a comment
+app.delete('/api/comments/:commentId', async (req, res) => {
+    try {
+        const { db } = await connectDB();
+        const commentId = req.params.commentId;
+        
+        // Try to find by UUID first, then by MongoDB ObjectId
+        let query = { id: commentId };
+        let comment = await db.collection('comments').findOne(query);
+        
+        if (!comment && ObjectId.isValid(commentId)) {
+            query = { _id: new ObjectId(commentId) };
+            comment = await db.collection('comments').findOne(query);
+        }
+        
+        if (!comment) {
+            return res.status(404).json({ message: 'Comment not found' });
+        }
+        
+        await db.collection('comments').deleteOne(query);
+        
+        console.log('API - Deleted comment:', comment);
+        res.json({ message: 'Comment deleted' });
+    } catch (error) {
+        console.error('API - Error deleting comment:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

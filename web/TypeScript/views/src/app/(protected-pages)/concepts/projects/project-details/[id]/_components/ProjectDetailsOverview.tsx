@@ -62,6 +62,7 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
     const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false)
     const [selectedLine, setSelectedLine] = useState<number | null>(null)
     const [isEditorMounted, setIsEditorMounted] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false)
     const params = useParams()
 
     useEffect(() => {
@@ -102,22 +103,56 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
         }
     }
 
-    const onSubmitComment = (data: CommentFormData) => {
-        if (selectedLine && editorRef.current) {
-            const model = editorRef.current.getModel()
-            const lineContent = model.getLineContent(selectedLine)
-            const indent = lineContent.match(/^\s*/)?.[0] || ''
-            model.pushEditOperations(
-                [],
-                [{
-                    range: new (window as any).monaco.Range(selectedLine, 1, selectedLine, 1),
-                    text: `${indent}// ${data.comment}\n`
-                }],
-                () => null
-            )
+    const onSubmitComment = async (data: CommentFormData) => {
+        if (!selectedLine || !params.id) {
+            console.error('No line selected or project ID missing')
+            return
         }
-        setIsCommentDialogOpen(false)
-        reset()
+
+        setIsSubmitting(true)
+        
+        try {
+            console.log('Submitting comment:', {
+                projectId: params.id,
+                projectName: projectName,
+                lineNumber: selectedLine,
+                content: data.comment
+            })
+
+            // Save comment to MongoDB
+            const response = await fetch(`/api/projects/${params.id}/comments`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content: data.comment,
+                    lineNumber: selectedLine,
+                    author: 'User', // You can make this dynamic based on logged-in user
+                    projectName: projectName,
+                    projectId: params.id
+                })
+            })
+
+            console.log('Response status:', response.status)
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                console.error('Error response:', errorData)
+                throw new Error(`Failed to save comment: ${response.status} - ${errorData.error || 'Unknown error'}`)
+            }
+
+            const savedComment = await response.json()
+            console.log('Comment saved successfully:', savedComment)
+
+            setIsCommentDialogOpen(false)
+            reset()
+        } catch (error) {
+            console.error('Error saving comment:', error)
+            alert(`Failed to save comment: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     const handleEditorDidMount = (editor: any, monaco: any) => {
@@ -403,9 +438,10 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
                             <Button
                                 variant="solid"
                                 type="submit"
-                                className="w-full py-3 text-base font-semibold rounded-xl bg-gradient-to-r from-green-400 to-green-600 text-white shadow-md hover:from-green-500 hover:to-green-700 transition-all"
+                                disabled={isSubmitting}
+                                className="w-full py-3 text-base font-semibold rounded-xl bg-gradient-to-r from-green-400 to-green-600 text-white shadow-md hover:from-green-500 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Submit Now
+                                {isSubmitting ? 'Saving...' : 'Submit Now'}
                             </Button>
                         </div>
                     </Form>
