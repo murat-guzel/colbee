@@ -63,6 +63,7 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
     const [selectedLine, setSelectedLine] = useState<number | null>(null)
     const [isEditorMounted, setIsEditorMounted] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false)
     const params = useParams()
 
     useEffect(() => {
@@ -146,6 +147,7 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
             console.log('Comment saved successfully:', savedComment)
 
             setIsCommentDialogOpen(false)
+            setIsSuccessDialogOpen(true)
             reset()
         } catch (error) {
             console.error('Error saving comment:', error)
@@ -445,6 +447,40 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
                             </Button>
                         </div>
                     </Form>
+                </div>
+            </Dialog>
+
+            <Dialog
+                isOpen={isSuccessDialogOpen}
+                onClose={() => setIsSuccessDialogOpen(false)}
+                width={420}
+                className="rounded-2xl shadow-xl"
+            >
+                <div className="p-8 flex flex-col items-center">
+                    <div className="bg-blue-100 rounded-full p-4 mb-4 flex items-center justify-center">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" fill="#2563eb" opacity="0.1" />
+                            <polyline points="9 12 12 15 17 10" stroke="#2563eb" strokeWidth="2.5" fill="none" />
+                        </svg>
+                    </div>
+                    <h2 className="text-2xl font-bold text-center mb-2 w-full">Yorumunuz kaydedildi</h2>
+                    <p className="text-gray-500 text-center mb-8 w-full">Yorumunuz başarıyla kaydedildi. Detayları e-posta ile de alacaksınız.</p>
+                    <div className="flex gap-4 w-full">
+                        <Button
+                            variant="default"
+                            className="w-1/2 border-blue-600 text-blue-600"
+                            onClick={() => setIsSuccessDialogOpen(false)}
+                        >
+                            Yorumu Görüntüle
+                        </Button>
+                        <Button
+                            variant="solid"
+                            className="w-1/2 bg-blue-600 text-white"
+                            onClick={() => setIsSuccessDialogOpen(false)}
+                        >
+                            Kapat
+                        </Button>
+                    </div>
                 </div>
             </Dialog>
         </div>
