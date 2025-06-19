@@ -373,10 +373,16 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
                     setIsCommentDialogOpen(false)
                     reset()
                 }}
-                width={600}
+                width={500}
+                className="rounded-2xl shadow-xl"
             >
-                <div className="pt-6">
-                    <Form onSubmit={handleSubmit(onSubmitComment)}>
+                <div className="p-8 flex flex-col items-center">
+                    {/* Title */}
+                    <h2 className="text-2xl font-bold text-center mb-2 w-full">Would you like to add a comment to this line?</h2>
+                    {/* Subtitle */}
+                    <p className="text-gray-500 text-center mb-8 w-full">Your comments help make the JSON data easier to read and understand.</p>
+                    {/* Comment textarea */}
+                    <Form onSubmit={handleSubmit(onSubmitComment)} className="w-full">
                         <FormItem>
                             <Controller
                                 name="comment"
@@ -385,25 +391,21 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
                                     <Input
                                         textArea
                                         size="lg"
-                                        rows={8}
-                                        placeholder="Enter your comment"
+                                        rows={5}
+                                        placeholder="Add a Comment..."
+                                        className="w-full rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/30"
                                         {...field}
                                     />
                                 )}
                             />
                         </FormItem>
-                        <div className="flex justify-end gap-2 mt-4">
+                        <div className="flex justify-center mt-8">
                             <Button
-                                variant="plain"
-                                onClick={() => {
-                                    setIsCommentDialogOpen(false)
-                                    reset()
-                                }}
+                                variant="solid"
+                                type="submit"
+                                className="w-full py-3 text-base font-semibold rounded-xl bg-gradient-to-r from-green-400 to-green-600 text-white shadow-md hover:from-green-500 hover:to-green-700 transition-all"
                             >
-                                Cancel
-                            </Button>
-                            <Button variant="solid" type="submit">
-                                Add Comment
+                                Submit Now
                             </Button>
                         </div>
                     </Form>
