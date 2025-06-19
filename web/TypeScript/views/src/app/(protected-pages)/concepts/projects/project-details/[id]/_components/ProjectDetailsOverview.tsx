@@ -130,7 +130,11 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
         let hideTimeout: NodeJS.Timeout | null = null;
 
         // SVG for pencil icon
-        const pencilSVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7dd3fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19.5 2 21l1.5-5L16.5 3.5z"/></svg>`;
+        const pencilSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7dd3fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            <path d="M8 9h8"/>
+            <path d="M8 13h6"/>
+        </svg>`;
 
         function showPencilIconAtLineEnd(lineNumber: number) {
             const model = editor.getModel();
@@ -148,7 +152,6 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
                 pencilIcon.style.justifyContent = 'center';
                 pencilIcon.style.background = 'rgba(30,41,59,0.95)';
                 pencilIcon.style.boxShadow = '0 2px 8px rgba(0,0,0,0.25)';
-                pencilIcon.style.border = '2px solid #38bdf8';
                 pencilIcon.style.borderRadius = '4px';
                 pencilIcon.style.cursor = 'pointer';
                 pencilIcon.style.opacity = '0.9';
@@ -173,7 +176,7 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
             }
             const containerRect = editor.getContainerDomNode().getBoundingClientRect();
             const editorRect = editor.getDomNode().getBoundingClientRect();
-            pencilIcon.style.left = `${pos.left + editorRect.left - containerRect.left + pos.width + 8}px`;
+            pencilIcon.style.left = `${pos.left + editorRect.left - containerRect.left}px`;
             pencilIcon.style.top = `${pos.top + editorRect.top - containerRect.top - 4}px`;
             pencilIcon.style.right = '';
             pencilIcon.style.zIndex = '2000';
