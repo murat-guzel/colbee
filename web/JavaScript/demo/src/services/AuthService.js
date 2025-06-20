@@ -8,6 +8,14 @@ export async function apiSignUp(data) {
     })
 }
 
+export async function apiSignIn(data) {
+    return ApiService.fetchDataWithAxios({
+        url: '/auth/sign-in',
+        method: 'post',
+        data,
+    })
+}
+
 export async function apiForgotPassword(data) {
     return ApiService.fetchDataWithAxios({
         url: '/auth/forgot-password',

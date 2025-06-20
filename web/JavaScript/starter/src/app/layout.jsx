@@ -1,5 +1,6 @@
 import { auth } from '@/auth'
 import AuthProvider from '@/components/auth/AuthProvider'
+import { AuthProvider as CustomAuthProvider } from '@/contexts/AuthContext'
 import ThemeProvider from '@/components/template/Theme/ThemeProvider'
 import pageMetaConfig from '@/configs/page-meta.config'
 import NavigationProvider from '@/components/template/Navigation/NavigationProvider'
@@ -27,9 +28,11 @@ export default async function RootLayout({ children }) {
             >
                 <body suppressHydrationWarning>
                     <ThemeProvider theme={theme}>
-                        <NavigationProvider navigationTree={navigationTree}>
-                            {children}
-                        </NavigationProvider>
+                        <CustomAuthProvider>
+                            <NavigationProvider navigationTree={navigationTree}>
+                                {children}
+                            </NavigationProvider>
+                        </CustomAuthProvider>
                     </ThemeProvider>
                 </body>
             </html>

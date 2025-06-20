@@ -3,23 +3,25 @@ import Avatar from '@/components/ui/Avatar'
 import Dropdown from '@/components/ui/Dropdown'
 import withHeaderItem from '@/utils/hoc/withHeaderItem'
 import Link from 'next/link'
-import signOut from '@/server/actions/auth/handleSignOut'
-import useCurrentSession from '@/utils/hooks/useCurrentSession'
+import { useAuth } from '@/contexts/AuthContext'
 import { PiUserDuotone, PiSignOutDuotone } from 'react-icons/pi'
 
 const dropdownItemList = []
 
 const _UserDropdown = () => {
-    const { session } = useCurrentSession()
+    const { user, logout, isAuthenticated } = useAuth()
 
     const handleSignOut = async () => {
-        await signOut()
+        await logout()
+    }
+
+    // If user is not authenticated, don't render the dropdown
+    if (!isAuthenticated) {
+        return null
     }
 
     const avatarProps = {
-        ...(session?.user?.image
-            ? { src: session?.user?.image }
-            : { icon: <PiUserDuotone /> }),
+        icon: <PiUserDuotone />,
     }
 
     return (
@@ -38,10 +40,10 @@ const _UserDropdown = () => {
                     <Avatar {...avatarProps} />
                     <div>
                         <div className="font-bold text-gray-900 dark:text-gray-100">
-                            {session?.user?.name || 'Anonymous'}
+                            {user?.userName || 'Anonymous'}
                         </div>
                         <div className="text-xs">
-                            {session?.user?.email || 'No email available'}
+                            {user?.email || 'No email available'}
                         </div>
                     </div>
                 </div>

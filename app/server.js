@@ -1,7 +1,8 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ObjectId } = require('mongodb');
+const { ObjectId } = require('mongodb');
 const { v4: uuidv4 } = require('uuid');
+const { connectDB } = require('./lib/database');
 require('dotenv').config();
 
 // Initialize Express app
@@ -9,49 +10,17 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: true, // Allow all origins
+    credentials: true
+}));
 app.use(express.json());
 
-// MongoDB Connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/colbee';
-const DB_NAME = MONGODB_URI.split('/').pop().split('?')[0] || 'colbee';
+// Import routes
+const authRoutes = require('./routes/auth');
 
-// MongoDB Connection with caching
-let cached = global.mongodb;
-if (!cached) {
-    cached = global.mongodb = { conn: null, client: null, promise: null };
-}
-
-async function connectDB() {
-    if (cached.conn) {
-        return cached.conn;
-    }
-
-    if (!cached.promise) {
-        const opts = {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        };
-
-        cached.promise = MongoClient.connect(MONGODB_URI).then((client) => {
-            return {
-                client,
-                db: client.db(DB_NAME)
-            };
-        });
-    }
-
-    try {
-        cached.conn = await cached.promise;
-        console.log('Connected to MongoDB');
-    } catch (e) {
-        cached.promise = null;
-        console.error('MongoDB connection error:', e);
-        throw e;
-    }
-
-    return cached.conn;
-}
+// Use routes
+app.use('/api/auth', authRoutes);
 
 // API Routes
 

@@ -1,32 +1,59 @@
 'use client'
+import { useState } from 'react'
 import SignIn from '@/components/auth/SignIn'
-import { onSignInWithCredentials } from '@/server/actions/auth/handleSignIn'
-import handleOauthSignIn from '@/server/actions/auth/handleOauthSignIn'
-import { REDIRECT_URL_KEY } from '@/constants/app.constant'
-import { useSearchParams } from 'next/navigation'
+import { apiSignIn } from '@/services/AuthService'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
+import toast from '@/components/ui/toast'
+import Notification from '@/components/ui/Notification'
 
 const SignInClient = () => {
-    const searchParams = useSearchParams()
-    const callbackUrl = searchParams.get(REDIRECT_URL_KEY)
+    const router = useRouter()
+    const { login } = useAuth()
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
-    const handleSignIn = ({ values, setSubmitting, setMessage }) => {
-        setSubmitting(true)
+    const handleSignIn = async ({ values, setSubmitting, setMessage }) => {
+        try {
+            setIsSubmitting(true)
+            setSubmitting(true)
 
-        onSignInWithCredentials(values, callbackUrl || '').then((data) => {
-            if (data?.error) {
-                setMessage(data.error)
-                setSubmitting(false)
-            }
-        })
+            console.log('Sign in values:', values)
+
+            const response = await apiSignIn(values)
+            
+            console.log('Sign in response:', response)
+            
+            // Use AuthContext to login
+            login(response.user, response.token)
+
+            console.log('User logged in, redirecting to /home...')
+
+            toast.push(
+                <Notification title="Sign in successful!" type="success">
+                    Welcome back, {response.user.userName}!
+                </Notification>,
+            )
+
+            // Redirect to home page
+            console.log('Redirecting to /home...')
+            window.location.href = '/home'
+            
+            console.log('Redirect called')
+            
+        } catch (error) {
+            console.error('Sign in error:', error)
+            console.error('Error response:', error.response)
+            const errorMessage = error.response?.data?.message || 'Sign in failed. Please try again.'
+            setMessage(errorMessage)
+        } finally {
+            setIsSubmitting(false)
+            setSubmitting(false)
+        }
     }
 
     const handleOAuthSignIn = async ({ type }) => {
-        if (type === 'google') {
-            await handleOauthSignIn('google')
-        }
-        if (type === 'github') {
-            await handleOauthSignIn('github')
-        }
+        // OAuth functionality can be implemented later
+        console.log('OAuth sign in:', type)
     }
 
     return <SignIn onSignIn={handleSignIn} onOauthSignIn={handleOAuthSignIn} />

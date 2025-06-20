@@ -4,28 +4,46 @@ import Notification from '@/components/ui/Notification'
 import SignUp from '@/components/auth/SignUp'
 import { apiSignUp } from '@/services/AuthService'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 
 const SignUpClient = () => {
     const router = useRouter()
+    const { login } = useAuth()
 
-    const handlSignUp = async ({ values, setSubmitting, setMessage }) => {
+    const handleSignUp = async ({ values, setSubmitting, setMessage }) => {
         try {
             setSubmitting(true)
-            await apiSignUp(values)
+            
+            console.log('Sign up values:', values)
+            
+            const response = await apiSignUp(values)
+            
+            console.log('Sign up response:', response)
+            
+            // Auto-login after signup
+            if (response.token) {
+                login(response.user, response.token)
+            }
+
             toast.push(
                 <Notification title="Account created!" type="success">
-                    You can now sign in from our sign in page
+                    Welcome, {response.user.userName}! Your account has been created successfully.
                 </Notification>,
             )
-            router.push('/sign-in')
+            
+            // Redirect to home page after successful signup
+            router.push('/home')
         } catch (error) {
-            setMessage(error)
+            console.error('Sign up error:', error)
+            console.error('Error response:', error.response)
+            const errorMessage = error.response?.data?.message || 'Sign up failed. Please try again.'
+            setMessage(errorMessage)
         } finally {
             setSubmitting(false)
         }
     }
 
-    return <SignUp onSignUp={handlSignUp} />
+    return <SignUp onSignUp={handleSignUp} />
 }
 
 export default SignUpClient

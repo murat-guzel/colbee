@@ -7,7 +7,7 @@ export type AppConfig = {
 }
 
 const appConfig: AppConfig = {
-    apiPrefix: '/api',
+    apiPrefix: process.env.NEXT_PUBLIC_API_BASE_URL || '/api',
     authenticatedEntryPath: '/dashboards/ecommerce',
     unAuthenticatedEntryPath: '/sign-in',
     locale: 'en',
