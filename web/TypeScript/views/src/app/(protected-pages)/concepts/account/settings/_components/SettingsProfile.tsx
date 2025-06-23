@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useEffect } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import Button from '@/components/ui/Button'
 import Upload from '@/components/ui/Upload'
 import Input from '@/components/ui/Input'
@@ -11,7 +11,7 @@ import NumericInput from '@/components/shared/NumericInput'
 import { countryList } from '@/constants/countries.constant'
 import { components } from 'react-select'
 import type { ControlProps, OptionProps } from 'react-select'
-import { apiGetSettingsProfile } from '@/services/AccontsService'
+import { apiGetUserProfile, apiUpdateUserProfile, apiUploadProfilePhoto, apiDeleteProfilePhoto, getProfilePhotoUrl } from '@/services/ProfileService'
 import sleep from '@/utils/sleep'
 import useSWR from 'swr'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -20,25 +20,41 @@ import { z } from 'zod'
 import { HiOutlineUser } from 'react-icons/hi'
 import { TbPlus } from 'react-icons/tb'
 import type { ZodType } from 'zod'
-import type { GetSettingsProfileResponse } from '../types'
+import useCurrentSession from '@/utils/hooks/useCurrentSession'
+import toast from '@/components/ui/toast'
+import Notification from '@/components/ui/Notification'
 
 type ProfileSchema = {
     firstName: string
     lastName: string
     email: string
-    dialCode: string
-    phoneNumber: string
+    dialCode?: string
+    phoneNumber?: string
     img: string
-    country: string
-    address: string
-    postcode: string
-    city: string
+    country?: string
+    address?: string
+    postcode?: string
+    city?: string
 }
 
 type CountryOption = {
     label: string
     dialCode: string
     value: string
+}
+
+type UserProfile = {
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+    dialCode: string
+    phoneNumber: string
+    profilePhotoUrl?: string
+    country: string
+    address: string
+    postcode: string
+    city: string
 }
 
 const { Control } = components
@@ -50,14 +66,12 @@ const validationSchema: ZodType<ProfileSchema> = z.object({
         .string()
         .min(1, { message: 'Email required' })
         .email({ message: 'Invalid email' }),
-    dialCode: z.string().min(1, { message: 'Please select your country code' }),
-    phoneNumber: z
-        .string()
-        .min(1, { message: 'Please input your mobile number' }),
-    country: z.string().min(1, { message: 'Please select a country' }),
-    address: z.string().min(1, { message: 'Addrress required' }),
-    postcode: z.string().min(1, { message: 'Postcode required' }),
-    city: z.string().min(1, { message: 'City required' }),
+    dialCode: z.string().optional(),
+    phoneNumber: z.string().optional(),
+    country: z.string().optional(),
+    address: z.string().optional(),
+    postcode: z.string().optional(),
+    city: z.string().optional(),
     img: z.string(),
 })
 
@@ -100,9 +114,14 @@ const CustomControl = ({ children, ...props }: ControlProps<CountryOption>) => {
 }
 
 const SettingsProfile = () => {
-    const { data, mutate } = useSWR(
-        '/api/settings/profile/',
-        () => apiGetSettingsProfile<GetSettingsProfileResponse>(),
+    const { session } = useCurrentSession();
+    const userId = session?.user?.id;
+    const [uploading, setUploading] = useState(false)
+    const [deleting, setDeleting] = useState(false)
+
+    const { data, mutate } = useSWR<UserProfile>(
+        userId ? `/api/profile/${userId}` : null,
+        userId ? () => apiGetUserProfile(userId) : null,
         {
             revalidateOnFocus: false,
             revalidateIfStale: false,
@@ -142,22 +161,112 @@ const SettingsProfile = () => {
         reset,
         formState: { errors, isSubmitting },
         control,
+        setValue,
     } = useForm<ProfileSchema>({
         resolver: zodResolver(validationSchema),
     })
 
     useEffect(() => {
         if (data) {
-            reset(data)
+            // Map the backend data to the form structure
+            reset({
+                firstName: data?.firstName || '',
+                lastName: data?.lastName || '',
+                email: data?.email || '',
+                dialCode: data?.dialCode || '',
+                phoneNumber: data?.phoneNumber || '',
+                img: data?.profilePhotoUrl || '',
+                country: data?.country || '',
+                address: data?.address || '',
+                postcode: data?.postcode || '',
+                city: data?.city || '',
+            })
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data])
 
     const onSubmit = async (values: ProfileSchema) => {
-        await sleep(500)
-        if (data) {
-            mutate({ ...data, ...values }, false)
+        if (!userId) return;
+        try {
+            await apiUpdateUserProfile(userId, {
+                firstName: values.firstName,
+                lastName: values.lastName,
+                email: values.email,
+                dialCode: values.dialCode,
+                phoneNumber: values.phoneNumber,
+                country: values.country,
+                address: values.address,
+                postcode: values.postcode,
+                city: values.city,
+            })
+            
+            // Update the local data
+            if (data) {
+                mutate({ ...data, ...values }, false)
+            }
+            // Başarıyla kaydedildiğinde toast göster
+            toast.push(
+                <Notification type="success" title="Kaydedildi">
+                    Bilgileriniz başarıyla kaydedildi.
+                </Notification>
+            )
+        } catch (error) {
+            console.error('Error updating profile:', error)
         }
+    }
+
+    const handlePhotoUpload = async (fileList: File[], _fileListAll: File[]) => {
+        if (!userId || !fileList || fileList.length === 0) return
+
+        setUploading(true)
+        try {
+            const file = fileList[0]
+            const response = await apiUploadProfilePhoto(userId, file) as { photoUrl: string }
+            
+            // Update the form with the new photo URL
+            setValue('img', response.photoUrl)
+            
+            // Update the local data
+            if (data) {
+                mutate({ ...data, profilePhotoUrl: response.photoUrl }, false)
+            }
+        } catch (error) {
+            console.error('Error uploading photo:', error)
+        } finally {
+            setUploading(false)
+        }
+    }
+
+    const handlePhotoDelete = async () => {
+        if (!userId) return;
+        setDeleting(true)
+        try {
+            await apiDeleteProfilePhoto(userId)
+            
+            // Clear the photo URL
+            setValue('img', '')
+            
+            // Update the local data
+            if (data) {
+                mutate({ ...data, profilePhotoUrl: '' }, false)
+            }
+        } catch (error) {
+            console.error('Error deleting photo:', error)
+        } finally {
+            setDeleting(false)
+        }
+    }
+
+    const getPhotoUrl = () => {
+        if (!data?.profilePhotoUrl) return ''
+        
+        // If it's already a full URL, return as is
+        if (data.profilePhotoUrl.startsWith('http')) {
+            return data.profilePhotoUrl
+        }
+        
+        // If it's a relative path, construct the full URL
+        return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${data.profilePhotoUrl}`
     }
 
     return (
@@ -174,28 +283,22 @@ const SettingsProfile = () => {
                                     size={90}
                                     className="border-4 border-white bg-gray-100 text-gray-300 shadow-lg"
                                     icon={<HiOutlineUser />}
-                                    src={field.value}
+                                    src={getPhotoUrl()}
                                 />
                                 <div className="flex items-center gap-2">
                                     <Upload
                                         showList={false}
                                         uploadLimit={1}
                                         beforeUpload={beforeUpload}
-                                        onChange={(files) => {
-                                            if (files.length > 0) {
-                                                field.onChange(
-                                                    URL.createObjectURL(
-                                                        files[0],
-                                                    ),
-                                                )
-                                            }
-                                        }}
+                                        onChange={handlePhotoUpload}
+                                        disabled={uploading}
                                     >
                                         <Button
                                             variant="solid"
                                             size="sm"
                                             type="button"
                                             icon={<TbPlus />}
+                                            loading={uploading}
                                         >
                                             Upload Image
                                         </Button>
@@ -203,9 +306,9 @@ const SettingsProfile = () => {
                                     <Button
                                         size="sm"
                                         type="button"
-                                        onClick={() => {
-                                            field.onChange('')
-                                        }}
+                                        onClick={handlePhotoDelete}
+                                        loading={deleting}
+                                        disabled={!data?.profilePhotoUrl}
                                     >
                                         Remove
                                     </Button>

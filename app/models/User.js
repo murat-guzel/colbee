@@ -7,6 +7,10 @@ class User {
         this.email = data.email || '';
         this.userName = data.userName || '';
         this.password = data.password || '';
+        this.firstName = data.firstName || '';
+        this.lastName = data.lastName || '';
+        this.profilePhoto = data.profilePhoto || null;
+        this.profilePhotoUrl = data.profilePhotoUrl || '';
         this.createdAt = data.createdAt || new Date();
         this.updatedAt = data.updatedAt || new Date();
         this.isActive = data.isActive !== undefined ? data.isActive : true;
@@ -30,6 +34,10 @@ class User {
             email: this.email,
             userName: this.userName,
             password: this.password,
+            firstName: this.firstName,
+            lastName: this.lastName,
+            profilePhoto: this.profilePhoto,
+            profilePhotoUrl: this.profilePhotoUrl,
             createdAt: this.createdAt,
             updatedAt: this.updatedAt,
             isActive: this.isActive,
@@ -52,6 +60,10 @@ class User {
             email: doc.email,
             userName: doc.userName,
             password: doc.password,
+            firstName: doc.firstName,
+            lastName: doc.lastName,
+            profilePhoto: doc.profilePhoto,
+            profilePhotoUrl: doc.profilePhotoUrl,
             createdAt: doc.createdAt,
             updatedAt: doc.updatedAt,
             isActive: doc.isActive,
@@ -65,6 +77,9 @@ class User {
             id: this._id ? this._id.toString() : null,
             email: this.email,
             userName: this.userName,
+            firstName: this.firstName,
+            lastName: this.lastName,
+            profilePhotoUrl: this.profilePhotoUrl,
             createdAt: this.createdAt,
             updatedAt: this.updatedAt,
             isActive: this.isActive,

@@ -18,9 +18,11 @@ app.use(express.json());
 
 // Import routes
 const authRoutes = require('./routes/auth');
+const profileRoutes = require('./routes/profile');
 
 // Use routes
 app.use('/api/auth', authRoutes);
+app.use('/api/profile', profileRoutes);
 
 // API Routes
 

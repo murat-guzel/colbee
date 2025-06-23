@@ -27,14 +27,12 @@ const validationSchema = z.object({
         .string()
         .min(1, { message: 'Email required' })
         .email({ message: 'Invalid email' }),
-    dialCode: z.string().min(1, { message: 'Please select your country code' }),
-    phoneNumber: z
-        .string()
-        .min(1, { message: 'Please input your mobile number' }),
-    country: z.string().min(1, { message: 'Please select a country' }),
-    address: z.string().min(1, { message: 'Addrress required' }),
-    postcode: z.string().min(1, { message: 'Postcode required' }),
-    city: z.string().min(1, { message: 'City required' }),
+    dialCode: z.string().optional(),
+    phoneNumber: z.string().optional(),
+    country: z.string().optional(),
+    address: z.string().optional(),
+    postcode: z.string().optional(),
+    city: z.string().optional(),
     img: z.string(),
 })
 
