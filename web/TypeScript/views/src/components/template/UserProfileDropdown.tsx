@@ -11,6 +11,8 @@ import {
     PiPulseDuotone,
     PiSignOutDuotone,
 } from 'react-icons/pi'
+import { apiGetUserProfile } from '@/services/ProfileService'
+import useSWR from 'swr'
 
 import type { JSX } from 'react'
 
@@ -18,6 +20,20 @@ type DropdownList = {
     label: string
     path: string
     icon: JSX.Element
+}
+
+type UserProfile = {
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+    dialCode: string
+    phoneNumber: string
+    profilePhotoUrl?: string
+    country: string
+    address: string
+    postcode: string
+    city: string
 }
 
 const dropdownItemList: DropdownList[] = [
@@ -40,14 +56,55 @@ const dropdownItemList: DropdownList[] = [
 
 const _UserDropdown = () => {
     const { session } = useCurrentSession()
+    const userId = session?.user?.id
+
+    // Fetch current user profile data to get the latest profilePhotoUrl
+    const { data: profileData } = useSWR<UserProfile>(
+        userId ? `/api/profile/${userId}` : null,
+        userId ? () => apiGetUserProfile<UserProfile>(userId) : null,
+        {
+            revalidateOnFocus: false,
+            revalidateIfStale: false,
+            revalidateOnReconnect: false,
+        }
+    )
 
     const handleSignOut = async () => {
         await signOut()
     }
 
+    // Get the profile photo URL from the API response or fallback to session
+    const getProfilePhotoUrl = () => {
+        if (profileData?.profilePhotoUrl) {
+            // If it's already a full URL, return as is
+            if (profileData.profilePhotoUrl.startsWith('http')) {
+                return profileData.profilePhotoUrl
+            }
+            // If it's a relative path, construct the full URL
+            return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${profileData.profilePhotoUrl}`
+        }
+        
+        // Fallback to session data
+        return session?.user?.profilePhotoUrl || session?.user?.image || ''
+    }
+
+    // Get user display name from profile data or session
+    const getUserDisplayName = () => {
+        if (profileData?.firstName && profileData?.lastName) {
+            return `${profileData.firstName} ${profileData.lastName}`
+        }
+        if (profileData?.firstName) {
+            return profileData.firstName
+        }
+        if (session?.user?.name) {
+            return session.user.name
+        }
+        return 'Anonymous'
+    }
+
     const avatarProps = {
-        ...(session?.user?.image
-            ? { src: session?.user?.image }
+        ...(getProfilePhotoUrl() && getProfilePhotoUrl() !== ''
+            ? { src: getProfilePhotoUrl() }
             : { icon: <PiUserDuotone /> }),
     }
 
@@ -67,7 +124,7 @@ const _UserDropdown = () => {
                     <Avatar {...avatarProps} />
                     <div>
                         <div className="font-bold text-gray-900 dark:text-gray-100">
-                            {session?.user?.name || 'Anonymous'}
+                            {getUserDisplayName()}
                         </div>
                         <div className="text-xs">
                             {session?.user?.email || 'No email available'}
