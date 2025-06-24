@@ -9,14 +9,20 @@ const validateCredential = async (values: SignInCredential) => {
         // Use our own backend API
         const response = await apiSignIn({ email, password })
         
+        console.log('Backend response:', response)
+        console.log('Backend user:', response?.user)
+        
         if (response && response.user) {
-            return {
+            const user = {
                 id: response.user.id,
                 name: response.user.userName,
                 email: response.user.email,
-                avatar: '',
+                profilePhotoUrl: response.user.profilePhotoUrl || '',
                 authority: [response.user.role || 'user'],
+                jwtToken: response.token,
             }
+            console.log('Returning user:', user)
+            return user
         }
 
         return null

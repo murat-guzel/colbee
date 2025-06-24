@@ -13,6 +13,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import type { ZodType } from 'zod'
+import { apiChangePassword } from '@/services/AuthService'
+import toast from '@/components/ui/toast'
+import Notification from '@/components/ui/Notification'
+import useCurrentSession from '@/utils/hooks/useCurrentSession'
+import React from 'react'
 
 type PasswordSchema = {
     currentPassword: string
@@ -48,7 +53,7 @@ const validationSchema: ZodType<PasswordSchema> = z
             .min(1, { message: 'Please enter your current password!' }),
         newPassword: z
             .string()
-            .min(1, { message: 'Please enter your new password!' }),
+            .min(6, { message: 'Password must be at least 6 characters long!' }),
         confirmNewPassword: z
             .string()
             .min(1, { message: 'Please confirm your new password!' }),
@@ -64,24 +69,72 @@ const SettingsSecurity = () => {
     )
     const [confirmationOpen, setConfirmationOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const { session } = useCurrentSession()
 
     const formRef = useRef<HTMLFormElement>(null)
+
+    // Save JWT token to localStorage when session is available
+    React.useEffect(() => {
+        if (session?.user?.jwtToken && typeof window !== 'undefined') {
+            localStorage.setItem('authToken', session.user.jwtToken);
+        }
+    }, [session?.user?.jwtToken]);
 
     const {
         getValues,
         handleSubmit,
         formState: { errors },
         control,
+        reset,
     } = useForm<PasswordSchema>({
         resolver: zodResolver(validationSchema),
     })
 
     const handlePostSubmit = async () => {
         setIsSubmitting(true)
-        await sleep(1000)
-        console.log('getValues', getValues())
-        setConfirmationOpen(false)
-        setIsSubmitting(false)
+        try {
+            const values = getValues()
+            
+            // Check if user is authenticated
+            if (!session?.user?.jwtToken) {
+                throw new Error('User not authenticated')
+            }
+            
+            await apiChangePassword({
+                currentPassword: values.currentPassword,
+                newPassword: values.newPassword,
+            })
+            
+            // Close dialog first, then show success message
+            setConfirmationOpen(false)
+            
+            // Small delay to ensure dialog is closed before showing toast
+            setTimeout(() => {
+                toast.push(
+                    <Notification title="Success" type="success">
+                        Password changed successfully!
+                    </Notification>
+                )
+            }, 100)
+            
+            reset() // Reset form after successful password change
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to change password'
+            
+            // Close dialog first, then show error message
+            setConfirmationOpen(false)
+            
+            // Small delay to ensure dialog is closed before showing toast
+            setTimeout(() => {
+                toast.push(
+                    <Notification title="Error" type="danger">
+                        {errorMessage}
+                    </Notification>
+                )
+            }, 100)
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     const onSubmit = async () => {
@@ -176,7 +229,7 @@ const SettingsSecurity = () => {
             >
                 <p>Are you sure you want to change your password?</p>
             </ConfirmDialog>
-            <div className="mb-8">
+            <div className="mb-8" style={{ display: 'none' }}>
                 <h4>2-Step verification</h4>
                 <p>
                     Your account holds great value to hackers. Enable two-step

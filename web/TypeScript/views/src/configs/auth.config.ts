@@ -6,6 +6,14 @@ import Google from 'next-auth/providers/google'
 
 import type { SignInCredential } from '@/@types/auth'
 
+// NextAuth User tipini genişlet
+declare module "next-auth" {
+    interface User {
+        profilePhotoUrl?: string;
+        jwtToken?: string;
+    }
+}
+
 export default {
     providers: [
         Github({
@@ -28,21 +36,31 @@ export default {
 
                 return {
                     id: user.id,
-                    name: user.userName,
+                    name: user.name,
                     email: user.email,
-                    image: user.avatar,
+                    profilePhotoUrl: user.profilePhotoUrl,
+                    jwtToken: user.jwtToken,
                 }
             },
         }),
     ],
     callbacks: {
-        async session(payload) {
+        async jwt({ token, user }) {
+            if (user) {
+                token.profilePhotoUrl = user.profilePhotoUrl;
+                token.jwtToken = user.jwtToken;
+            }
+            return token;
+        },
+        async session({ session, token }) {
             /** apply extra user attributes here, for example, we add 'authority' & 'id' in this section */
             return {
-                ...payload.session,
+                ...session,
                 user: {
-                    ...payload.session.user,
-                    id: payload.token.sub,
+                    ...session.user,
+                    id: token.sub,
+                    profilePhotoUrl: token.profilePhotoUrl as string,
+                    jwtToken: token.jwtToken as string,
                     authority: ['admin', 'user'],
                 },
             }

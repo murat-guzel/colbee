@@ -9,6 +9,7 @@ export type SignInResponse = {
         id: string
         userName: string
         email: string
+        profilePhotoUrl?: string
         createdAt: string
         updatedAt: string
         isActive: boolean
