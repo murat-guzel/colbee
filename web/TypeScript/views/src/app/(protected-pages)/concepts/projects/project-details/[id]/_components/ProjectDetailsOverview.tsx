@@ -1,7 +1,5 @@
 import Card from '@/components/ui/Card'
 import Avatar from '@/components/ui/Avatar'
-import Progress from '@/components/ui/Progress'
-import Tag from '@/components/ui/Tag'
 import ReactHtmlParser from 'html-react-parser'
 import dayjs from 'dayjs'
 import dynamic from 'next/dynamic'
@@ -43,12 +41,6 @@ type ProjectDetailsOverviewProps = {
             img: string
         }
     }>
-    schedule: Partial<{
-        startDate: number
-        dueDate: number
-        status: string
-        completion: number
-    }>
 }
 
 type CommentFormData = {
@@ -66,7 +58,7 @@ type Comment = {
 }
 
 const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
-    const { content = '', client = {}, schedule = {}, projectName } = props
+    const { content = '', client = {}, projectName } = props
     const editorRef = useRef<any>(null)
     const monacoRef = useRef<any>(null)
     const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false)
@@ -469,8 +461,9 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
     }, [comments, isEditorMounted]);
 
     return (
-        <div className="flex flex-col lg:flex-row flex-auto gap-12">
-            <div className="flex-1">
+        <div className="flex flex-col gap-6">
+            {/* Editor - Full width */}
+            <div className="w-full">
                 <Card className="mt-6">
                     <div style={{ borderRadius: 10, overflow: 'hidden', background: '#e5e7eb' }}>
                         <MacWindowHeader />
@@ -478,7 +471,7 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
                             <MonacoEditor
                                 height="100%"
                                 defaultLanguage="json"
-                                defaultValue={JSON.stringify({ client, schedule }, null, 2)}
+                                defaultValue={JSON.stringify({ client }, null, 2)}
                                 onChange={handleEditorChange}
                                 onMount={handleEditorDidMount}
                                 options={{
@@ -507,104 +500,6 @@ const ProjectDetailsOverview = (props: ProjectDetailsOverviewProps) => {
                                     automaticLayout: true
                                 }}
                                 theme="vs-dark"
-                            />
-                        </div>
-                    </div>
-                </Card>
-            </div>
-            <div className="lg:min-w-[320px] lg:w-[350px]">
-                <Card
-                    bordered={false}
-                    className="bg-gray-100 dark:bg-gray-800 shadow-none"
-                >
-                    <h5>Client information</h5>
-                    <div className="flex flex-col gap-5 mt-6">
-                        <div>
-                            <span className="font-semibold heading-text">
-                                Client:
-                            </span>
-                            <span className="font-semibold">
-                                {' '}
-                                {client.clientName}
-                            </span>
-                        </div>
-                        <div className="flex flex-col gap-3">
-                            <div className="font-semibold heading-text">
-                                Skate holder:
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Avatar
-                                    size={25}
-                                    src={client.skateHolder?.img}
-                                    alt=""
-                                />
-                                <span className="font-semibold">
-                                    {client.skateHolder?.name}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="flex flex-col gap-3">
-                            <div className="font-semibold heading-text">
-                                Project manager:
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Avatar
-                                    size={25}
-                                    src={client.projectManager?.img}
-                                    alt=""
-                                />
-                                <span className="font-semibold">
-                                    {client.projectManager?.name}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </Card>
-                <Card
-                    bordered={false}
-                    className="bg-gray-100 dark:bg-gray-800 shadow-none mt-6"
-                >
-                    <h5>Schedule</h5>
-                    <div className="flex flex-col gap-5 mt-6">
-                        <div>
-                            <span className="font-semibold heading-text">
-                                Start date:
-                            </span>
-                            <span className="font-semibold">
-                                {' '}
-                                {dayjs
-                                    .unix(schedule.startDate as number)
-                                    .format('ddd, DD MMM YYYY')}
-                            </span>
-                        </div>
-                        <div>
-                            <span className="font-semibold heading-text">
-                                Due date:
-                            </span>
-                            <span className="font-semibold">
-                                {' '}
-                                {dayjs
-                                    .unix(schedule.dueDate as number)
-                                    .format('ddd, DD MMM YYYY')}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="font-semibold heading-text">
-                                Status:
-                            </span>
-                            <Tag className="border-2 bg-transparent text-green-600 border-green-600 dark:bg-transparent dark:text-green-600 dark:border-green-600 rounded-full">
-                                {schedule.status}
-                            </Tag>
-                        </div>
-
-                        <div className="flex flex-col gap-3">
-                            <span className="font-semibold heading-text">
-                                Completion:
-                            </span>
-                            <Progress
-                                percent={schedule.completion}
-                                trailClass="bg-gray-200 dark:bg-gray-600"
-                                size="sm"
                             />
                         </div>
                     </div>

@@ -1,24 +1,31 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
 import Dialog from '@/components/ui/Dialog'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import { Form, FormItem } from '@/components/ui/Form'
-import ToggleDrawer from '@/components/shared/ToggleDrawer'
-import ProjectDetailsNavigation from './ProjectDetailsNavigation'
-import useResponsive from '@/utils/hooks/useResponsive'
 import { apiGetProjectMembers } from '@/services/ProjectService'
 import { components } from 'react-select'
 import { TbChecks } from 'react-icons/tb'
 import useSWRMutation from 'swr/mutation'
 import type { MultiValueGenericProps, OptionProps } from 'react-select'
-import type { ToggleDrawerRef } from '@/components/shared/ToggleDrawer'
 
 type ProjectDetailsHeaderProps = {
     title: string
+    client: Partial<{
+        clientName: string
+        skateHolder: {
+            name: string
+            img: string
+        }
+        projectManager: {
+            name: string
+            img: string
+        }
+    }>
     isContentEdit: boolean
     onEdit: (value: boolean) => void
     selected: string
@@ -87,19 +94,12 @@ const CustomControlMulti = ({ children, ...props }: MultiValueGenericProps) => {
 }
 
 const ProjectDetailsHeader = (props: ProjectDetailsHeaderProps) => {
-    const { title, isContentEdit, onEdit, onChange, selected } = props
+    const { title, client, isContentEdit, onEdit } = props
 
     const [isDialogOpen, setIsDialogOpen] = useState(false)
-
     const [loading, setLoading] = useState(false)
-
     const [copied, setCopied] = useState(false)
-
     const [memberOptions, setMemberOptions] = useState<MemberOption[]>([])
-
-    const drawerRef = useRef<ToggleDrawerRef>(null)
-
-    const { smaller } = useResponsive()
 
     const { trigger } = useSWRMutation(
         ['/api/projects/members'],
@@ -137,24 +137,51 @@ const ProjectDetailsHeader = (props: ProjectDetailsHeaderProps) => {
         }
     }, [copied])
 
-    const handleNavigationChange = (val: string) => {
-        onChange(val)
-        drawerRef.current?.handleCloseDrawer()
-    }
-
     return (
         <>
             <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 mb-6 pb-4">
-                <div className="flex items-center gap-4">
-                    {smaller.xl && (
-                        <ToggleDrawer ref={drawerRef} title="Navigation">
-                            <ProjectDetailsNavigation
-                                selected={selected}
-                                onChange={handleNavigationChange}
-                            />
-                        </ToggleDrawer>
-                    )}
+                <div className="flex items-center gap-6">
                     <h3>{title}</h3>
+                    <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-600 dark:text-gray-400">
+                                Client:
+                            </span>
+                            <span className="font-semibold">
+                                {client.clientName}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-600 dark:text-gray-400">
+                                Stakeholder:
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <Avatar
+                                    size={20}
+                                    src={client.skateHolder?.img}
+                                    alt=""
+                                />
+                                <span className="font-semibold">
+                                    {client.skateHolder?.name}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-600 dark:text-gray-400">
+                                Manager:
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <Avatar
+                                    size={20}
+                                    src={client.projectManager?.img}
+                                    alt=""
+                                />
+                                <span className="font-semibold">
+                                    {client.projectManager?.name}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <Button onClick={() => setIsDialogOpen(true)}>Share</Button>

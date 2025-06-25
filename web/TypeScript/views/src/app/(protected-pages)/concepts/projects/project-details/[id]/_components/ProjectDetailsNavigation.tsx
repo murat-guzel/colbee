@@ -31,15 +31,15 @@ const ProjectDetailsNavigation = ({
     }
 
     return (
-        <div className="w-[250px]">
-            <div className="flex flex-col gap-2">
+        <div className="w-full">
+            <div className="flex flex-row gap-2 overflow-x-auto pb-2">
                 {navigation.map((nav) => (
-                    <div key={nav.value}>
+                    <div key={nav.value} className="flex-shrink-0">
                         <button
                             className={classNames(
-                                'flex items-center gap-2 w-full px-3.5 py-2.5 rounded-full border-2 border-transparent font-semibold transition-colors dark:hover:text-gray-100 text-gray-900 dark:text-white',
+                                'flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-transparent font-semibold transition-colors dark:hover:text-gray-100 text-gray-900 dark:text-white whitespace-nowrap',
                                 selected === nav.value
-                                    ? 'border-primary'
+                                    ? 'border-primary bg-primary/5'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-800',
                             )}
                             onClick={() => handleClick(nav.value)}
